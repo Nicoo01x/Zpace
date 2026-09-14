@@ -1,0 +1,14 @@
+/*
+ * Symbols Nerd Font Mono — every Nerd Font glyph (powerline, devicons,
+ * octicons, material…) at exactly one cell wide. Sits behind the user's
+ * terminal font so oh-my-posh / starship / Claude Code prompts render even
+ * when the primary face has no icons (SF Mono, Consolas, Cascadia Mono…).
+ * Licence: MIT + SIL OFL 1.1 — see src/assets/fonts/LICENSE-nerd-fonts-symbols.txt
+ */
+@font-face {
+  font-family: 'Symbols Nerd Font Mono';
+  src: url('../assets/fonts/SymbolsNerdFontMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}

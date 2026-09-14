@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+src-tauri/target
+src-tauri/gen/schemas
+drizzle/meta
+*.log
+.vite
+src-tauri/gen
+src-tauri/icons/android
+src-tauri/icons/ios
+.impeccable/hook.cache.json

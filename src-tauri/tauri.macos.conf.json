@@ -1,0 +1,23 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Zpace",
+        "width": 1360,
+        "height": 880,
+        "minWidth": 880,
+        "minHeight": 560,
+        "center": true,
+        "resizable": true,
+        "shadow": true,
+        "dragDropEnabled": true,
+        "theme": null,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 18, "y": 18 }
+      }
+    ]
+  }
+}

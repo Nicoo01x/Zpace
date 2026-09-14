@@ -1,0 +1,80 @@
+/* Sileo in Zpace: above dialogs and menus, the app's fonts, rich descriptions. */
+/* sileo injects its own stylesheet at mount (z-index 50): out-rank it so toasts sit above sheets, dialogs and menus. */
+section[data-sileo-viewport][data-position] {
+  z-index: 1300 !important;
+  font-family: var(--font-sans);
+}
+[data-sileo-toast] {
+  outline: none;
+}
+[data-sileo-toast]:focus-visible {
+  filter: drop-shadow(0 0 0 2px var(--accent));
+}
+[data-sileo-description] {
+  line-height: 1.45;
+}
+/* Rich descriptions: file lists, deploy steps. */
+.toast-files {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.toast-files > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.toast-files .name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+.toast-files .add {
+  color: #5dc98a;
+  font-variant-numeric: tabular-nums;
+}
+.toast-files .del {
+  color: #f07167;
+  font-variant-numeric: tabular-nums;
+}
+.toast-files .more {
+  opacity: 0.6;
+}
+.toast-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11.5px;
+}
+.toast-steps .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.35;
+}
+.toast-steps .dot.on {
+  opacity: 1;
+  animation: toast-dot 0.9s ease-in-out infinite;
+}
+.toast-steps .dot.done {
+  opacity: 1;
+  background: #5dc98a;
+}
+@keyframes toast-dot {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+}

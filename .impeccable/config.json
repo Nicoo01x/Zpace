@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "src/features/plugins/PluginsSection.tsx"
+        ],
+        "createdAt": "2026-09-14T02:30:39.097Z",
+        "reason": "Claude: the src is a runtime data:image/svg+xml URL, rendered only after the fetch resolves (guarded by 'src ?')"
+      }
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+[package]
+name = "zpace"
+version = "0.1.0"
+description = "A desktop workspace for Claude Code and other CLI agents."
+authors = ["Zpace"]
+edition = "2021"
+rust-version = "1.80"
+
+[lib]
+name = "zpace_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "unstable", "devtools", "protocol-asset"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+tauri-plugin-os = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-process = "2"
+tauri-plugin-store = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+portable-pty = "0.9"
+which = "8"
+trash = "5"
+base64 = "0.22"
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+log = "0.4"
+ureq = { version = "2", features = ["json"] }
+notify = "7"
+regex = "1"
+
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
+windows-core = "0.61"
+windows = { version = "0.61", features = ["Media_SpeechRecognition", "Media_Control", "Storage_Streams", "Globalization", "Foundation", "Foundation_Collections", "Win32_System_WinRT"] }
+windows-sys = { version = "0.60", features = ["Win32_System_Threading", "Win32_Graphics_Gdi", "Win32_Foundation"] }
+png = "0.17"
+arboard = { version = "3", default-features = false, features = ["image-data"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
