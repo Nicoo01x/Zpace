@@ -15,3 +15,6 @@ src-tauri/icons/ios
 
 # The working notes for Claude stay on the machine
 CLAUDE.md
+
+# Local tooling
+.impeccable/
