@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from 'react';
-import { Users, X, SplitSquareHorizontal, SplitSquareVertical, Terminal as TerminalIcon, FileDiff, Search, MoreHorizontal, Plus, FolderOpen, Settings, Keyboard, Info, FolderTree, GitBranch, Pencil, Copy, StopCircle, FileText, Globe, NotebookPen, Maximize2, Minimize2, Swords, Puzzle } from 'lucide-react';
+import { Users, X, SplitSquareHorizontal, SplitSquareVertical, Terminal as TerminalIcon, FileDiff, Search, MoreHorizontal, Plus, FolderOpen, Settings, Keyboard, Info, FolderTree, GitBranch, Pencil, Copy, StopCircle, FileText, Globe, NotebookPen, Maximize2, Minimize2, Swords } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useUI, collectLeaves } from '@/stores/ui';
 import { useSettings } from '@/stores/settings';
@@ -20,6 +20,7 @@ import { useAgents } from '@/stores/agents';
 import { RoomPane } from '@/features/agents/RoomPane';
 import { PluginPane } from '@/features/plugins/PluginPane';
 import { pluginPaneTitle } from '@/features/plugins/runtime';
+import { InstalledPluginIcon } from '@/features/plugins/PluginIcon';
 import { ChangesButton } from '@/features/review/ChangesButton';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { HomeScreen } from '@/features/projects/HomeScreen';
@@ -305,7 +306,7 @@ function PaneHeader({ leaf, active }: { leaf: PaneLeaf; active: boolean }) {
       ) : content.kind === 'room' ? (
         <Users className="size-[14px] shrink-0 text-accent" />
       ) : content.kind === 'plugin' ? (
-        <Puzzle className="size-[14px] shrink-0 text-accent" />
+        <InstalledPluginIcon pluginId={content.pluginId} />
       ) : content.kind === 'file' ? (
         <FileText className="size-[14px] shrink-0 text-muted" />
       ) : content.kind === 'browser' ? (
