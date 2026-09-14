@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { durableStorage } from '@/lib/durable-storage';
-import { REPO } from '@/features/settings/author';
+import { RELEASES_REPO } from '@/features/settings/author';
 
 /**
  * The update on offer and where its install stands. `notes` are the
@@ -75,7 +75,7 @@ export const useUpdate = create<UpdateState>()(
 export async function fetchReleaseNotes(version: string): Promise<ReleaseNotes | null> {
   for (const tag of [`v${version}`, version]) {
     try {
-      const res = await fetch(`https://api.github.com/repos/${REPO}/releases/tags/${encodeURIComponent(tag)}`, { headers: { Accept: 'application/vnd.github+json' } });
+      const res = await fetch(`https://api.github.com/repos/${RELEASES_REPO}/releases/tags/${encodeURIComponent(tag)}`, { headers: { Accept: 'application/vnd.github+json' } });
       if (!res.ok) continue;
       const r = (await res.json()) as { name?: string; body?: string; published_at?: string; html_url?: string };
       return { title: r.name?.trim() || `Zpace ${version}`, body: (r.body ?? '').trim(), date: r.published_at, url: r.html_url };
