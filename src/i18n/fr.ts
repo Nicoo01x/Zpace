@@ -1432,4 +1432,5 @@ export const fr: Record<string, string> = {
   'Switch off': 'Désactiver',
   'Switch on': 'Activer',
   'Manage plugins…': 'Gérer les plugins…',
+  'Nothing installed yet.': 'Rien d\'installé pour l\'instant.',
 };

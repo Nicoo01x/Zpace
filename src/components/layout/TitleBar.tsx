@@ -8,6 +8,7 @@ import { useProjects } from '@/stores/projects';
 import { IconButton } from '@/components/ui/IconButton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { NotesChip } from '@/features/notes/NotesChip';
+import { PluginsChip } from '@/features/plugins/PluginsChip';
 import { UsageChip } from '@/features/agent/UsageChip';
 import { UsageBar } from '@/features/agent/UsageBar';
 import { MascotTitleBar } from '@/features/mascot/MascotView';
@@ -38,7 +39,7 @@ export function TitleBar() {
   );
 }
 
-/** Sidebar toggle, notes chip and pending-changes chip. Shared by the Windows strip and the macOS sidebar top. */
+/** Sidebar toggle, notes chip, plugins chip and pending-changes chip. Shared by the Windows strip and the macOS sidebar top. */
 export function SidebarControls() {
   const sidebarOpen = useUI((s) => s.sidebarOpen);
   const toggleSidebar = useUI((s) => s.toggleSidebar);
@@ -59,6 +60,7 @@ export function SidebarControls() {
         <FolderTree />
       </IconButton>
       <NotesChip />
+      <PluginsChip />
       <UsageChip />
       {changes > 0 ? (
         <Tooltip content={`${changes} changed ${changes === 1 ? 'file' : 'files'} · open git panel`} shortcut="mod+shift+g">

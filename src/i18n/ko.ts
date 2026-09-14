@@ -1432,4 +1432,5 @@ export const ko: Record<string, string> = {
   'Switch off': '끄기',
   'Switch on': '켜기',
   'Manage plugins…': '플러그인 관리…',
+  'Nothing installed yet.': '아직 설치된 것이 없습니다.',
 };

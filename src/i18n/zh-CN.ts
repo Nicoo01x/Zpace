@@ -1432,4 +1432,5 @@ export const zhCN: Record<string, string> = {
   'Switch off': '关闭',
   'Switch on': '开启',
   'Manage plugins…': '管理插件…',
+  'Nothing installed yet.': '还没有安装任何插件。',
 };

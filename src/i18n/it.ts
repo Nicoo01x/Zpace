@@ -1432,4 +1432,5 @@ export const it: Record<string, string> = {
   'Switch off': 'Spegni',
   'Switch on': 'Accendi',
   'Manage plugins…': 'Gestisci i plugin…',
+  'Nothing installed yet.': 'Ancora niente installato.',
 };

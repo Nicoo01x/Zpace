@@ -1432,4 +1432,5 @@ export const ru: Record<string, string> = {
   'Switch off': 'Выключить',
   'Switch on': 'Включить',
   'Manage plugins…': 'Управлять плагинами…',
+  'Nothing installed yet.': 'Пока ничего не установлено.',
 };

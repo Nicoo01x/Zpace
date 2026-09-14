@@ -1432,4 +1432,5 @@ export const ptBR: Record<string, string> = {
   'Switch off': 'Desligar',
   'Switch on': 'Ligar',
   'Manage plugins…': 'Gerenciar plugins…',
+  'Nothing installed yet.': 'Nada instalado ainda.',
 };

@@ -1432,4 +1432,5 @@ export const ja: Record<string, string> = {
   'Switch off': 'オフにする',
   'Switch on': 'オンにする',
   'Manage plugins…': 'プラグインを管理…',
+  'Nothing installed yet.': 'まだ何もインストールされていません。',
 };

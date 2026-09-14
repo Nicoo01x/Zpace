@@ -62,6 +62,7 @@ Everything moves by transform and opacity; **nothing animates height**. Presets 
 - Respect reduced motion (`useReducedMotion` / `MotionConfig`): fade only.
 - The transcript (virtualised list) is the one exception: it keeps the height-driven `Collapsible`.
 - Springs that overshoot go past 1: clamp anything derived from them that must not go negative (a `blur()` with a negative value is invalid CSS and flickers).
+- Inside a Popover or menu (a surface that exits by scaling through `AnimatePresence`) use plain rows, not `LivingList`/`LivingItem`: a `layout` child keeps projecting while the parent exits and the popover never unmounts (seen with the plugins chip).
 
 **Every expander, dropdown, form and inline field that opens must animate.** If you add a `{open ? <X/> : null}`, wrap it.
 
