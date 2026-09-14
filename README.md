@@ -78,7 +78,7 @@ npm run dev          # the web side on 127.0.0.1:1420
 npm run tauri:dev    # the desktop app against it
 ```
 
-Node 20+, Rust stable, and the platform's webview toolchain. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) has the architecture, the Claude Code integration and the keyboard; [CLAUDE.md](CLAUDE.md) has the conventions for code, design and motion.
+Node 20+, Rust stable, and the platform's webview toolchain. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) has the architecture, the Claude Code integration, the keyboard and the conventions for code, design and motion.
 
 ## Contributing
 

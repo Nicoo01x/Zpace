@@ -1,6 +1,6 @@
 # Working on Zpace
 
-How to run it, how it is built, how Claude Code is driven, and the keyboard. The conventions for code, design and motion are in [CLAUDE.md](../CLAUDE.md).
+How to run it, how it is built, how Claude Code is driven, and the keyboard. The conventions for code, design and motion are at the end.
 
 ## Running it
 
@@ -173,3 +173,50 @@ Adding another agent means implementing `AgentProvider` (`startSession / sendMes
 | Ctrl/⌘ K (in a file) · right-click | Ask Claude about the selection (inline card) |
 | Alt T | Focus latest notification |
 
+
+---
+
+## Code conventions
+
+- **TypeScript everywhere, strict.** No `any`; narrow with types, not casts. React Compiler lint is on: keep hooks pure, no mutation of props/state.
+- **Comments are prose.** A short `/** … */` at the top of a file says what it is and the one non-obvious decision. Inline comments explain *why*, in full sentences, lower-case after a dash. No comment that repeats the code.
+- **Every user-facing string goes through `t()`** (`import { t } from '@/i18n'`); files that already have a local `t` import it as `tr`. Strings in tables/constants are wrapped in `T()` and translated where rendered. Placeholders are `{name}`. After adding strings, add them to all nine dictionaries (`src/i18n/*.ts`, alphabetical is not required — append) and run the check.
+- **Stores** are zustand with `persist` and `durableStorage()` (a JSON state file in the app data folder, shared by every instance of the app; the big ones — projects, sessions, notes — hydrate from SQLite). Always `partialize`, `version`, and a `migrate` when the shape changes. Hydration is asynchronous: anything at boot that needs a store's persisted content waits for `store.persist.hasHydrated()` / `onFinishHydration` (the storage refuses writes for a key until its first read is done, so an early `set` cannot wipe the file). Selectors with `useShallow` must return primitives or stable objects — a fresh nested array/object every render loops forever.
+- **Native calls** go through `src/native/*` wrappers (`invoke` in `native/bridge.ts`); Rust commands live in `src-tauri/src/commands/*` and are registered in `lib.rs`. Windows-only code is `#[cfg(windows)]` with a non-Windows stub.
+- **Panes** are a `PaneContent` kind (`types/workspace.ts`) rendered in `components/layout/Workspace.tsx`, kept alive by `stores/layouts.ts`.
+
+### Design system
+
+Tokens live in `src/styles/tokens.css` (light and dark): `--canvas`, `--background`, `--surface`, `--surface-inset`, `--surface-hover`, `--surface-active`, `--surface-raised`, `--text-primary` / `-secondary` / `-muted` / `-inverse`, `--accent`, `--accent-soft`, `--accent-warm`, `--border`, `--border-subtle`, `--border-strong`, `--success`, `--warning`, `--danger` (+ `-soft`). Use the Tailwind names that map to them (`bg-surface`, `text-secondary`, `text-danger`, `bg-accent-soft`…); never a literal colour in a component unless it is brand (`#D97757` Claude) or a theme pack.
+
+- **Type**: `text-ui` (13.5px) for controls and rows, `text-content` for prose, `text-meta` for the small line under things. Explicit sizes are fine when they carry meaning: kickers are `text-[11px] font-medium uppercase tracking-[0.05em] text-muted`; titles `text-[15px] font-semibold tracking-[-0.01em]`; hints `text-[12px] text-secondary`. Numbers that line up get `tabular`.
+- **Surfaces**: rows are `h-(--row-height)` and `rounded-lg`; cards `rounded-lg bg-surface shadow-[0_0_0_1px_var(--border)]` (a 1px ring, not a border); insets `bg-surface-inset`; dialogs `rounded-[14px]`; menus/popovers `bg-surface-raised shadow-popover backdrop-blur-xl`. Dividers are `hairline-b/t/l/r`, not `border-*`.
+- **Controls**: use the primitives in `src/components/ui` (Button, IconButton, TextInput, Textarea, Select, SegmentedControl, Switch, DropdownMenu, ContextMenu, Popover, Tooltip, Dialog, Tabs, Progress, Living…). Never hand-roll a dropdown with `absolute` divs — the primitives already carry the motion, focus, and keyboard behaviour.
+- **Not everything is a card.** One ring for the thing that is separate; lists are flat rows with hover states.
+- **Empty states** are one quiet line in `text-muted`, centred, with the action inline ("Create one.").
+- **Icons**: lucide, 13–15px in rows, `size-4` in headers. Brand marks come from `features/agent/BrandIcon.tsx` (real SVGs), agent avatars are Bloub creatures (`features/mascot`), never emoji.
+- **Light and dark** always; a theme pack (`features/appearance/packs.ts`) sets colours + terminal scheme + editor colours together.
+- **Consume as little as possible**: no idle polling (poll only while something is happening or a pane is open, and skip when `document.hidden`), animation loops capped (the mascot runs at 30 fps), network fetches cached for the session.
+
+### Motion — the living layout
+
+Everything moves by transform and opacity; **nothing animates height**. Presets are in `src/lib/motion.ts` (`springs.living` 420/34/0.8 for layout, `springs.snappy` for hover/press, `springs.pop` for menus, `springs.modal` for dialogs; the `living` variants and `easings`). The primitives are in `src/components/ui/Living.tsx`:
+
+- `LivingGroup` = one layout scope (`LayoutGroup`).
+- `LivingBox` = a container that changes size (a row that opens a form). It springs between sizes; it clips only while moving; it must keep some permanent content (a box that collapses to 0px cannot be projected).
+- `LivingReveal open={…}` = the conditional content inside a box: fades in from 4px above; on close it pops out of the flow at once (`popLayout`) so siblings start moving immediately. Its parent needs `relative`.
+- `LivingItem` = a row that moves with the layout (position only) and fades in/out; `still` for rows already there at first paint. `LivingList` = the `AnimatePresence popLayout` wrapper for keyed items.
+- `LivingSwitch k={…}` = content that swaps by key (a settings section, a form whose fields depend on a choice). `Swap k={…}` = an inline swap that must keep its place in a row (a label that becomes an input).
+- `LivingField` = a form field that just appeared (staggered by `index`). `Turn open={…}` = a chevron that rotates.
+- Buttons get the `press` utility (`globals.css`) for press physics — never together with `transition-*` utilities on the same element.
+- Menus, popovers, tooltips and dialogs animate through the primitives (`popoverVariants`, the dialog morphs from the element that opened it via `consumeOrigin`). Interrupting any animation (open → close → open) must continue from where the element is; never `mode="wait"`.
+- Respect reduced motion (`useReducedMotion` / `MotionConfig`): fade only.
+- The transcript (virtualised list) is the one exception: it keeps the height-driven `Collapsible`.
+- Springs that overshoot go past 1: clamp anything derived from them that must not go negative (a `blur()` with a negative value is invalid CSS and flickers).
+- Inside a Popover or menu (a surface that exits by scaling through `AnimatePresence`) use plain rows, not `LivingList`/`LivingItem`: a `layout` child keeps projecting while the parent exits and the popover never unmounts (seen with the plugins chip).
+
+**Every expander, dropdown, form and inline field that opens must animate.** If you add a `{open ? <X/> : null}`, wrap it.
+
+### i18n
+
+`src/i18n/index.ts` holds `LANGUAGES` (native names), `LOCALES`, `t()`, `T()`, `currentLocale()`. Dictionaries are `en` (source, empty) plus es, pt-BR, fr, de, it, ja, zh-CN, ko, ru. Spanish is Río de la Plata (vos). Dates/numbers use the active locale. The chrome re-mounts on a language change (keys in `App.tsx`); anything that must survive that lives in a store, not React state (the onboarding wizard's step is a small zustand store for that reason).

@@ -18,7 +18,7 @@ npm run lint           # eslint + tsc, must be clean
 node scripts/i18n-check.mjs   # every dictionary complete
 ```
 
-Rust lives in `src-tauri`; `cargo check` there. The conventions that matter — design tokens, the motion system, i18n, stores, how plugins hook in — are in [CLAUDE.md](CLAUDE.md). It is written for an AI pair, but it is the style guide for humans too.
+Rust lives in `src-tauri`; `cargo check` there. The conventions that matter — design tokens, the motion system, i18n, stores, how plugins hook in — are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Pull requests
 
