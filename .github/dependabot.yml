@@ -1,0 +1,20 @@
+# Weekly dependency updates, grouped so they arrive as a few reviewable pull requests instead of dozens.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      npm: { patterns: ["*"] }
+    open-pull-requests-limit: 5
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule: { interval: weekly, day: monday }
+    groups:
+      cargo: { patterns: ["*"] }
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      actions: { patterns: ["*"] }

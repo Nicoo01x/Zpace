@@ -8,6 +8,14 @@ on:
   pull_request:
   workflow_dispatch:
 
+# The token can only read the repository; nothing here writes anywhere.
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-22.04

@@ -1,0 +1,22 @@
+name: Feature request
+description: Something you wish Zpace did.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that is slow, awkward or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: How you imagine it working. Sketches and references welcome.
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: Could this be a plugin?
+      description: Many things fit the plugin API (panes, island readouts, commands, agents, themes) and can ship without touching the app.
+      options: ["Not sure", "Yes, probably", "No, it needs the app"]

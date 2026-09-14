@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Nicoo01x/Zpace/security/advisories/new
+    about: Report it privately — please do not open a public issue.
+  - name: A plugin
+    url: https://github.com/Nicoo01x/zpace-plugins/issues
+    about: Bugs and ideas for a plugin from the library go to the registry repository.

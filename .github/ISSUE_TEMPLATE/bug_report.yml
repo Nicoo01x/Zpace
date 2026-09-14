@@ -1,0 +1,40 @@
+name: Bug report
+description: Something in Zpace does not work the way it should.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Zpace version
+      description: Settings › About, or the installer's file name.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows 11, Windows 10, macOS (Apple Silicon), macOS (Intel), Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you saw. A screenshot or a short clip helps a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+        3. …
+  - type: textarea
+    id: logs
+    attributes:
+      label: Anything from the console
+      description: Ctrl+Shift+I opens the devtools; paste errors from the Console tab. Remove anything personal first.
+      render: text

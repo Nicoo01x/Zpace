@@ -11,6 +11,7 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+# Writes the release and its assets; nothing else.
 permissions:
   contents: write
 
