@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import { createElement, type ComponentType } from 'react';
 import { Puzzle } from 'lucide-react';
 import { usePlugins, enabledPlugins, type InstalledPlugin } from '@/stores/plugins';
 import { useSessions } from '@/stores/sessions';
@@ -37,7 +37,13 @@ export interface ZpaceApi {
   commands: { register: (cmd: { id: string; title: string; keywords?: string[]; run: () => unknown }) => () => void };
   notify: (n: { title: string; summary?: string; variant?: NotificationInput['variant']; sticky?: boolean; action?: { label: string; run: () => void } }) => string;
   notifications: { update: (id: string, patch: { title?: string; summary?: string; variant?: NotificationInput['variant'] }) => void; remove: (id: string) => void };
-  island: { set: (chip: IslandChip | null) => void };
+  island: {
+    set: (chip: IslandChip | null) => void;
+    /** A card that unfolds in the island: an image, a title, a few lines, buttons. Returns its id; hides on its own after `foldMs`. */
+    show: (card: IslandCard) => string;
+    update: (id: string, card: IslandCard) => void;
+    hide: (id: string) => void;
+  };
   panes: { open: (paneId: string) => void; openHtml: (title: string, html: string) => void; postMessage: (message: unknown) => void };
   notes: {
     list: (opts?: { project?: string }) => Array<{ id: string; title: string; kind: 'text' | 'board'; tags: string[]; projectId?: string; updatedAt: number }>;
@@ -59,6 +65,16 @@ export interface ZpaceApi {
   settings: { language: () => string; theme: () => string };
   clipboard: { write: (text: string) => Promise<void> };
   openUrl: (url: string) => Promise<void>;
+}
+
+export interface IslandCard {
+  title: string;
+  lines?: string[];
+  /** A data URL or https image, shown round at the left. */
+  image?: string;
+  buttons?: Array<{ label: string; run: () => void; primary?: boolean }>;
+  /** How long it stays unfolded, ms (default 8 s). */
+  foldMs?: number;
 }
 
 export type PluginEvent = 'session:completed' | 'session:started' | 'notification' | 'project:changed' | 'pane:message';
@@ -275,6 +291,24 @@ export function apiFor(p: InstalledPlugin): ZpaceApi {
         need(p, 'notifications');
         useIslandChips.getState().set(p.id, chip);
       },
+      show: (card) => {
+        need(p, 'notifications');
+        const id = uid('pc');
+        useNotifications.getState().push({ id, title: card.title, summary: card.lines?.[0] ?? p.manifest.name, variant: 'neutral', foldMs: card.foldMs ?? 8000, ...cardExtras(card) });
+        cardTimers.set(id, window.setTimeout(() => useNotifications.getState().remove(id), (card.foldMs ?? 8000) + 1200));
+        return id;
+      },
+      update: (id, card) => {
+        need(p, 'notifications');
+        useNotifications.getState().update(id, { title: card.title, summary: card.lines?.[0] ?? p.manifest.name, foldMs: card.foldMs ?? 8000, ...cardExtras(card) });
+        window.clearTimeout(cardTimers.get(id));
+        cardTimers.set(id, window.setTimeout(() => useNotifications.getState().remove(id), (card.foldMs ?? 8000) + 1200));
+      },
+      hide: (id) => {
+        need(p, 'notifications');
+        window.clearTimeout(cardTimers.get(id));
+        useNotifications.getState().remove(id);
+      },
     },
     panes: {
       open: (paneId) => {
@@ -420,6 +454,32 @@ export function apiFor(p: InstalledPlugin): ZpaceApi {
   };
 }
 
+const cardTimers = new Map<string, number>();
+
+/** The island card's rich body: the lines and the buttons row (unfolded, it stands in for the summary); the image goes in as the glyph. */
+function cardExtras(card: IslandCard) {
+  const lines = (card.lines ?? []).filter((l) => l.trim());
+  const rich = createElement(
+    'div',
+    { className: 'flex flex-col gap-1.5' },
+    lines.length ? createElement('div', { className: 'flex flex-col gap-0.5 text-white/60' }, ...lines.map((l, i) => createElement('span', { key: i, className: 'truncate' }, l))) : null,
+    card.buttons?.length
+      ? createElement(
+          'div',
+          { className: 'flex items-center gap-1.5 pt-0.5' },
+          ...card.buttons.map((b, i) =>
+            createElement(
+              'button',
+              { key: i, type: 'button', onClick: b.run, className: b.primary ? 'inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-3 text-[12px] font-medium text-black transition-colors hover:bg-white/90' : 'inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-white/12 px-2.5 text-[12px] text-white transition-colors hover:bg-white/20' },
+              b.label,
+            ),
+          ),
+        )
+      : null,
+  );
+  return { rich, icon: card.image ? createElement('img', { src: card.image, alt: '' }) : undefined };
+}
+
 /** Open (or focus) a plugin pane in the workspace. */
 export function openPane(content: Extract<PaneContent, { kind: 'plugin' }>) {
   const ui = useUI.getState();
@@ -432,6 +492,28 @@ export function openPane(content: Extract<PaneContent, { kind: 'plugin' }>) {
   const target = leaves.find((l) => l.id === ui.activePaneId) ?? leaves[0];
   ui.setPaneContent(target.id, content);
   ui.setActivePane(target.id);
+}
+
+/** What a click on the plugin does: its first pane, else its first command; false when it has nothing to open. */
+export function openPlugin(p: InstalledPlugin): boolean {
+  const pane = p.manifest.contributes?.panes?.[0]?.id ?? [...htmlPanes.keys()].find((k) => k.startsWith(p.id + '/'))?.slice(p.id.length + 1);
+  if (pane) {
+    openPane({ kind: 'plugin', pluginId: p.id, paneId: pane });
+    return true;
+  }
+  const cmd = pluginCommands().find((c) => c.id.startsWith(`plugin.${p.id}.`));
+  if (cmd) {
+    void cmd.run();
+    return true;
+  }
+  return false;
+}
+
+/** The plugin's panes, for a menu: the declared ones and the ones its script registered. */
+export function pluginPanes(p: InstalledPlugin): Array<{ id: string; title: string }> {
+  const declared = (p.manifest.contributes?.panes ?? []).map((x) => ({ id: x.id, title: x.title }));
+  const scripted = [...htmlPanes.entries()].filter(([k]) => k.startsWith(p.id + '/')).map(([k, v]) => ({ id: k.slice(p.id.length + 1), title: v.title }));
+  return [...declared, ...scripted.filter((x) => !declared.some((d) => d.id === x.id))];
 }
 
 /** The pane's title for the tab. */

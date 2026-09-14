@@ -23,6 +23,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { ProjectGroup } from '@/features/projects/ProjectGroup';
 import { TerminalRow } from '@/features/terminal/TerminalRow';
 import { NoteRow } from '@/features/notes/NoteRow';
+import { PluginRow } from '@/features/plugins/PluginRow';
+import { usePlugins } from '@/stores/plugins';
 import { ShellIcon } from '@/features/terminal/ShellIcon';
 import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
 import { ClaudeLogo, CodexLogo, GeminiLogo, OpenCodeLogo } from '@/features/agent/BrandIcon';
@@ -56,6 +58,8 @@ export function Sidebar() {
   const terminals = useTerminals(useShallow((s) => s.tabs.filter((t) => (!t.projectId || !allProjects.some((p) => p.id === t.projectId)) && matches(t.title))));
   const notes = useNotes(useShallow((s) => sortedNotes(s.notes).filter((n) => (!n.projectId || !allProjects.some((p) => p.id === n.projectId)) && matches(noteTitle(n)))));
   const agents = useAgents(useShallow((s) => agentList(s.agents).filter((a) => matches(a.name))));
+  const plugins = usePlugins(useShallow((s) => Object.values(s.installed).filter((p) => matches(p.manifest.name)).sort((a, b) => Number(b.enabled) - Number(a.enabled) || a.manifest.name.localeCompare(b.manifest.name))));
+  const openSettingsAt = useUI((s) => s.openSettings);
   // Claude Code's own subagents, for the active project (user + project + plugins).
   const activeProjectPath = useProjects((s) => s.projects.find((p) => p.id === useUI.getState().activeProjectId)?.path);
   const loadAssets = useCapabilities((s) => s.loadAssets);
@@ -246,6 +250,40 @@ export function Sidebar() {
                       {notes.map((n) => (
                         <LivingItem key={n.id}>
                           <NoteRow note={n} />
+                        </LivingItem>
+                      ))}
+                    </LivingList>
+                  )}
+                </Section>
+
+                {/* Plugins */}
+                <Section
+                  title={t('Plugins')}
+                  open={sections.plugins !== false}
+                  onToggle={() => toggleSection('plugins')}
+                  action={
+                    <Tooltip content={t('Browse the library')} side="right">
+                      <SectionAction label={t('Browse the library')} onClick={() => openSettingsAt('plugins')}>
+                        <Plus />
+                      </SectionAction>
+                    </Tooltip>
+                  }
+                >
+                  {plugins.length === 0 && needle ? (
+                    <Empty>{t('No plugin matches.')}</Empty>
+                  ) : plugins.length === 0 ? (
+                    <Empty>
+                      {t('Timers, music, boards, themes — made by the community.')}{' '}
+                      <button type="button" className="font-medium text-secondary hover:text-primary" onClick={() => openSettingsAt('plugins')}>
+                        {t('Browse the library')}
+                      </button>
+                      .
+                    </Empty>
+                  ) : (
+                    <LivingList className="flex flex-col gap-[3px]">
+                      {plugins.map((p) => (
+                        <LivingItem key={p.id}>
+                          <PluginRow plugin={p} />
                         </LivingItem>
                       ))}
                     </LivingList>

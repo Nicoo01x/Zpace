@@ -1424,4 +1424,12 @@ export const es: Record<string, string> = {
   'by {author}': 'por {author}',
   '{name} installed': '{name} instalado',
   '{name} removed': '{name} quitado',
+  'Browse the library': 'Ver la biblioteca',
+  'Timers, music, boards, themes — made by the community.': 'Temporizadores, música, tableros, temas: hechos por la comunidad.',
+  'Off — click to switch it on': 'Apagado: hacé clic para encenderlo',
+  'off': 'apagado',
+  'Open {name}': 'Abrir {name}',
+  'Switch off': 'Apagar',
+  'Switch on': 'Encender',
+  'Manage plugins…': 'Administrar plugins…',
 };

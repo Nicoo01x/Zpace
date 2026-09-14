@@ -79,6 +79,8 @@ function markNode(mark: NotificationMark | undefined, size: number): ReactNode {
 
 /** The glyph of one notification: its mark when it has one (a loading state keeps spinning), else the variant's check / cross / warning. */
 function Glyph({ n, size = 14 }: { n: AppNotification; size?: number }) {
+  const icon = useNotifications((s) => s.extras[n.id]?.icon);
+  if (icon) return <span className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full [&>img]:size-full [&>img]:object-cover" style={{ width: size + 14, height: size + 14 }}>{icon}</span>;
   const mark = n.variant === 'loading' ? null : markNode(n.mark, size);
   if (mark) return <span className="inline-flex shrink-0 items-center justify-center text-white">{mark}</span>;
   const v = VARIANT_GLYPH[n.variant];

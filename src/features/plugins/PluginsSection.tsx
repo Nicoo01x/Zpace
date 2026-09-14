@@ -14,6 +14,8 @@ import { useUI } from '@/stores/ui';
 import { registryBases, REGISTRY_URL, REGISTRY_REPO, avatarOf, profileOf, type PluginManifest, type RegistryEntry } from './manifest';
 import { install, refreshIndex, setEnabled, uninstall, updateFor } from './registry';
 import { openPane } from './runtime';
+import { useIcon } from './useIcon';
+import { PluginIcon } from './PluginIcon';
 
 /**
  * Settings › Plugins: the community library (from the registry's index)
@@ -118,51 +120,6 @@ function Empty({ icon, text, hint }: { icon: React.ReactNode; text: string; hint
 }
 
 /* ------------------------------------------------------------------ */
-
-const iconCache = new Map<string, Promise<string | null>>();
-
-/** The plugin's SVG icon as a data URL (an <img> cannot run a script), or null. */
-function useIcon(entry: RegistryEntry | undefined, manifest: PluginManifest) {
-  const [src, setSrc] = useState<string | null>(null);
-  const url = manifest.icon && entry ? `${entry.path}/${manifest.icon}` : null;
-  useEffect(() => {
-    if (!url) return;
-    if (!iconCache.has(url)) {
-      iconCache.set(
-        url,
-        (async () => {
-          for (const base of registryBases()) {
-            try {
-              const r = await fetch(`${base}/${url}`);
-              if (!r.ok) continue;
-              const txt = await r.text();
-              if (txt.includes('<svg')) return `data:image/svg+xml;utf8,${encodeURIComponent(txt)}`;
-            } catch {
-              /* next base */
-            }
-          }
-          return null;
-        })(),
-      );
-    }
-    let cancelled = false;
-    void iconCache.get(url)!.then((v) => !cancelled && setSrc(v));
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-  return src;
-}
-
-function PluginIcon({ src, name, size = 40 }: { src: string | null; name: string; size?: number }) {
-  return src ? (
-    <img src={src} alt="" width={size} height={size} className="shrink-0 rounded-[10px] object-cover shadow-[0_1px_3px_rgba(0,0,0,0.18)]" style={{ width: size, height: size }} />
-  ) : (
-    <span className="inline-flex shrink-0 items-center justify-center rounded-[10px] bg-accent-soft text-accent shadow-[0_0_0_1px_var(--border)]" style={{ width: size, height: size, fontSize: size * 0.4, fontWeight: 600 }}>
-      {name.trim()[0]?.toUpperCase() ?? '?'}
-    </span>
-  );
-}
 
 function Author({ author }: { author: PluginManifest['author'] }) {
   return (

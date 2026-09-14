@@ -169,6 +169,8 @@ async function takeBack(p: InstalledPlugin) {
 /** Activate every enabled plugin at launch. */
 export async function bootPlugins(): Promise<void> {
   if (!isTauri) return;
+  // the store hydrates from the state file asynchronously — on a big profile that takes longer than the boot delay
+  if (!usePlugins.persist.hasHydrated()) await new Promise<void>((resolve) => usePlugins.persist.onFinishHydration(() => resolve()));
   for (const p of Object.values(usePlugins.getState().installed)) if (p.enabled) await activate(p);
   void refreshIndex();
 }

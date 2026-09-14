@@ -1424,4 +1424,12 @@ export const ko: Record<string, string> = {
   'by {author}': '{author} 제작',
   '{name} installed': '{name} 설치됨',
   '{name} removed': '{name} 제거됨',
+  'Browse the library': '라이브러리 보기',
+  'Timers, music, boards, themes — made by the community.': '타이머, 음악, 보드, 테마 — 커뮤니티가 만들었습니다.',
+  'Off — click to switch it on': '꺼짐 — 클릭하여 켜기',
+  'off': '꺼짐',
+  'Open {name}': '{name} 열기',
+  'Switch off': '끄기',
+  'Switch on': '켜기',
+  'Manage plugins…': '플러그인 관리…',
 };

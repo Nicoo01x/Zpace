@@ -7,6 +7,11 @@ import { isTauri } from './platform';
  * store. The first read of a key falls back to its localStorage twin and
  * copies it over, so nothing saved before this existed is lost. In the
  * browser preview it is plain localStorage.
+ *
+ * A key is never written before its first read has finished: zustand's
+ * persist writes on every set, including sets that happen while the file
+ * is still being read, and such a write would replace what is on disk
+ * with the store's empty initial state.
  */
 type StoreLike = { get<T>(key: string): Promise<T | null | undefined>; set(key: string, value: unknown): Promise<void>; delete(key: string): Promise<boolean>; save(): Promise<void> };
 
@@ -40,9 +45,14 @@ const local = {
   },
 };
 
+const read = new Set<string>();
+
 export const durable: StateStorage = {
   getItem: async (name) => {
-    if (!isTauri) return local.get(name);
+    if (!isTauri) {
+      read.add(name);
+      return local.get(name);
+    }
     try {
       const s = await file();
       const v = await s.get<string>(name);
@@ -55,9 +65,12 @@ export const durable: StateStorage = {
       return null;
     } catch {
       return local.get(name);
+    } finally {
+      read.add(name);
     }
   },
   setItem: async (name, value) => {
+    if (!read.has(name)) return;
     // localStorage stays a mirror: a quick read at boot and a fallback if the file is unavailable.
     local.set(name, value);
     if (!isTauri) return;

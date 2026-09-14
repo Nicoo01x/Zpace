@@ -1424,4 +1424,12 @@ export const ptBR: Record<string, string> = {
   'by {author}': 'por {author}',
   '{name} installed': '{name} instalado',
   '{name} removed': '{name} removido',
+  'Browse the library': 'Ver a biblioteca',
+  'Timers, music, boards, themes — made by the community.': 'Timers, música, quadros, temas — feitos pela comunidade.',
+  'Off — click to switch it on': 'Desligado — clique para ligar',
+  'off': 'desligado',
+  'Open {name}': 'Abrir {name}',
+  'Switch off': 'Desligar',
+  'Switch on': 'Ligar',
+  'Manage plugins…': 'Gerenciar plugins…',
 };

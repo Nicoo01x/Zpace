@@ -56,7 +56,7 @@ export interface UIState {
   newProject: { path: string } | null;
   /** Claude Code launch dialog target (project already resolved). */
   claudeLaunch: { projectId: string } | null;
-  sidebarSections: { projects: boolean; agents: boolean; terminals: boolean; notes: boolean };
+  sidebarSections: { projects: boolean; agents: boolean; terminals: boolean; notes: boolean; plugins: boolean };
   /** Sidebar filter (Ctrl+Shift+S): narrows projects, sessions, terminals and notes by title. */
   sidebarFilterOpen: boolean;
   sidebarFilter: string;
@@ -98,7 +98,7 @@ export interface UIState {
   setCloneOpen: (v: boolean) => void;
   setNewProject: (v: { path: string } | null) => void;
   setClaudeLaunch: (v: { projectId: string } | null) => void;
-  toggleSection: (s: 'projects' | 'agents' | 'terminals' | 'notes') => void;
+  toggleSection: (s: 'projects' | 'agents' | 'terminals' | 'notes' | 'plugins') => void;
   setSidebarFilterOpen: (v: boolean) => void;
   setSidebarFilter: (q: string) => void;
 
@@ -178,7 +178,7 @@ export const useUI = create<UIState>()(
       cloneOpen: false,
       newProject: null,
       claudeLaunch: null,
-      sidebarSections: { projects: true, agents: true, terminals: true, notes: true },
+      sidebarSections: { projects: true, agents: true, terminals: true, notes: true, plugins: true },
       sidebarFilterOpen: false,
       sidebarFilter: '',
 

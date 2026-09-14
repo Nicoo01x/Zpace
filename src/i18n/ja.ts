@@ -1424,4 +1424,12 @@ export const ja: Record<string, string> = {
   'by {author}': '作者: {author}',
   '{name} installed': '{name} をインストールしました',
   '{name} removed': '{name} を削除しました',
+  'Browse the library': 'ライブラリを見る',
+  'Timers, music, boards, themes — made by the community.': 'タイマー、音楽、ボード、テーマ — コミュニティ製。',
+  'Off — click to switch it on': 'オフ — クリックでオンにします',
+  'off': 'オフ',
+  'Open {name}': '{name} を開く',
+  'Switch off': 'オフにする',
+  'Switch on': 'オンにする',
+  'Manage plugins…': 'プラグインを管理…',
 };

@@ -1424,4 +1424,12 @@ export const zhCN: Record<string, string> = {
   'by {author}': '作者：{author}',
   '{name} installed': '已安装 {name}',
   '{name} removed': '已移除 {name}',
+  'Browse the library': '浏览插件库',
+  'Timers, music, boards, themes — made by the community.': '计时器、音乐、看板、主题——来自社区。',
+  'Off — click to switch it on': '已关闭——点击开启',
+  'off': '关',
+  'Open {name}': '打开 {name}',
+  'Switch off': '关闭',
+  'Switch on': '开启',
+  'Manage plugins…': '管理插件…',
 };

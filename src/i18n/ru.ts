@@ -1424,4 +1424,12 @@ export const ru: Record<string, string> = {
   'by {author}': 'автор: {author}',
   '{name} installed': '{name} установлен',
   '{name} removed': '{name} удалён',
+  'Browse the library': 'Открыть библиотеку',
+  'Timers, music, boards, themes — made by the community.': 'Таймеры, музыка, доски, темы — от сообщества.',
+  'Off — click to switch it on': 'Выключен — нажмите, чтобы включить',
+  'off': 'выкл',
+  'Open {name}': 'Открыть {name}',
+  'Switch off': 'Выключить',
+  'Switch on': 'Включить',
+  'Manage plugins…': 'Управлять плагинами…',
 };
