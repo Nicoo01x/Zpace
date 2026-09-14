@@ -33,8 +33,10 @@ export function TitleBar() {
       <Island />
       <SidebarControls />
       <div data-tauri-drag-region className="flex-1" />
-      <MascotTitleBar />
-      <WindowControls />
+      <div data-island-avoid className="flex items-center">
+        <MascotTitleBar />
+        <WindowControls />
+      </div>
     </header>
   );
 }
@@ -52,7 +54,7 @@ export function SidebarControls() {
   const changes = (project?.git?.dirty ?? 0) || (session?.dirtyFiles ?? 0);
 
   return (
-    <div className="titlebar-group flex items-center gap-0.5 no-drag">
+    <div data-island-avoid className="titlebar-group flex items-center gap-0.5 no-drag">
       <IconButton label={sidebarOpen ? t('Hide sidebar') : t('Show sidebar')} shortcut="mod+b" size="md" onClick={toggleSidebar}>
         <PanelLeft />
       </IconButton>

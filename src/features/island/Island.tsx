@@ -270,6 +270,33 @@ export function Island() {
   );
 }
 
+/** How wide the compact island may grow before it runs into the title bar's controls (it sits centred, so the wider side counts twice). */
+function useIslandRoom(): number | undefined {
+  const [room, setRoom] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const measure = () => {
+      const w = window.innerWidth;
+      let edge = 0;
+      for (const el of document.querySelectorAll<HTMLElement>('[data-island-avoid]')) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0) continue;
+        // left-hand groups take up their right edge, right-hand ones the distance from their left edge to the window's edge
+        edge = Math.max(edge, r.left + r.width / 2 < w / 2 ? r.right : w - r.left);
+      }
+      setRoom(Math.max(120, w - edge * 2 - 16));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    document.querySelectorAll('[data-island-avoid]').forEach((el) => ro.observe(el));
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
+  return room;
+}
+
 const fade = { initial: { opacity: 0, filter: 'blur(3px)' }, animate: { opacity: 1, filter: 'blur(0px)' }, transition: { duration: 0.22, delay: 0.04 } };
 
 /** The Z and the name — and a dot when something arrived while you were away. */
@@ -287,6 +314,10 @@ function Brand({ unread = 0 }: { unread?: number }) {
 function Compact({ unread, onClick }: { unread: number; onClick: () => void }) {
   const live = useLive();
   const chips = useIslandChips((s) => s.chips);
+  const room = useIslandRoom();
+  // in a narrow window whole readouts step aside rather than every one being shredded to a letter: the brand keeps ~90 px, a readout wants ~130
+  const budget = room === undefined ? Infinity : Math.max(0, Math.floor((room - 90) / 130));
+  const shownChips = Object.entries(chips).slice(0, Math.max(0, budget - (live ? 1 : 0)));
   const focusSession = (id: string) => {
     const ui = useUI.getState();
     ui.setActiveSession(id);
@@ -295,12 +326,12 @@ function Compact({ unread, onClick }: { unread: number; onClick: () => void }) {
     else ui.setPaneContent(ui.activePaneId, { kind: 'session', sessionId: id });
   };
   return (
-    <motion.div {...fade} className="flex h-[24px] items-center">
-      <button type="button" onClick={onClick} aria-label={t('Notifications')} title={unread ? t('{n} unread', { n: unread }) : t('Notifications')} className="flex h-full items-center pl-2.5 pr-2">
+    <motion.div {...fade} className="flex h-[24px] min-w-0 items-center" style={{ maxWidth: room }}>
+      <button type="button" onClick={onClick} aria-label={t('Notifications')} title={unread ? t('{n} unread', { n: unread }) : t('Notifications')} className="flex h-full shrink-0 items-center pl-2.5 pr-2">
         <Brand unread={unread} />
       </button>
       <AnimatePresence initial={false}>
-        {live ? (
+        {live && budget > 0 ? (
           <motion.button
             key={live.sessionId}
             type="button"
@@ -310,9 +341,9 @@ function Compact({ unread, onClick }: { unread: number; onClick: () => void }) {
             transition={springs.snappy}
             onClick={() => focusSession(live.sessionId)}
             title={live.title}
-            className="flex h-full items-center overflow-hidden whitespace-nowrap pr-2.5 text-[11.5px] leading-none"
+            className="flex h-full min-w-0 shrink items-center overflow-hidden whitespace-nowrap pr-2.5 text-[11.5px] leading-none"
           >
-            <span className="mr-2 h-3 w-px bg-white/20" />
+            <span className="mr-2 h-3 w-px shrink-0 bg-white/20" />
             {live.waiting ? (
               <span className="mr-1.5 block size-1.5 rounded-full bg-[#ffbd2e]" />
             ) : (
@@ -321,12 +352,12 @@ function Compact({ unread, onClick }: { unread: number; onClick: () => void }) {
               </motion.span>
             )}
             <span className={live.waiting ? 'text-[#ffbd2e]' : 'text-white/85'}>{activityWord(live.activity)}</span>
-            {live.subject ? <span className="ml-1 max-w-[220px] truncate font-mono text-white/55">{live.subject}</span> : null}
+            {live.subject ? <span className="ml-1 min-w-0 max-w-[220px] truncate font-mono text-white/55">{live.subject}</span> : null}
             {live.running + live.waiting > 1 ? <span className="ml-1.5 text-white/45">+{live.running + live.waiting - 1}</span> : null}
           </motion.button>
         ) : null}
         {/* plugin readouts: a countdown, the track playing */}
-        {Object.entries(chips).map(([owner, chip]) => (
+        {shownChips.map(([owner, chip]) => (
           <motion.button
             key={owner}
             type="button"
@@ -336,12 +367,12 @@ function Compact({ unread, onClick }: { unread: number; onClick: () => void }) {
             transition={springs.snappy}
             onClick={chip.onClick}
             title={chip.title ?? chip.text}
-            className="flex h-full items-center overflow-hidden whitespace-nowrap pr-2.5 text-[11.5px] leading-none tabular"
+            className="flex h-full min-w-0 shrink items-center overflow-hidden whitespace-nowrap pr-2.5 text-[11.5px] leading-none tabular"
             style={{ color: chip.color ?? 'rgba(255,255,255,0.85)' }}
           >
-            <span className="mr-2 h-3 w-px bg-white/20" />
+            <span className="mr-2 h-3 w-px shrink-0 bg-white/20" />
             {chip.icon ? chip.icon.trimStart().startsWith('<svg') ? <span aria-hidden className="mr-1.5 inline-flex [&>svg]:size-3 [&>svg]:shrink-0" dangerouslySetInnerHTML={{ __html: chip.icon }} /> : <span className="mr-1.5 inline-flex text-[11px]">{chip.icon}</span> : null}
-            <span className="max-w-[240px] truncate">{chip.text}</span>
+            <span className="min-w-0 max-w-[240px] truncate">{chip.text}</span>
           </motion.button>
         ))}
       </AnimatePresence>
