@@ -22,12 +22,19 @@ import type { Trigger, Action } from '@/stores/automations';
 export const REGISTRY_REPO = 'Nicoo01x/zpace-plugins';
 export const REGISTRY_BRANCH = 'main';
 export const REGISTRY_URL = `https://github.com/${REGISTRY_REPO}`;
-/** Where the files come from — read on every call so a dev override (`localStorage['zpace.registry'] = 'http://127.0.0.1:3777'`) takes effect without a reload. */
-export function registryRaw(): string {
+/**
+ * Where the files come from, in order of preference: GitHub's raw host, then jsDelivr's mirror of the
+ * same repo (GitHub's CDN edge in some regions answers 503 for a while; jsDelivr serves the same bytes
+ * with a few minutes of cache). Read on every call so a dev override
+ * (`localStorage['zpace.registry'] = 'http://127.0.0.1:3777'`) takes effect without a reload.
+ */
+export function registryBases(): string[] {
   const override = import.meta.env.DEV && typeof localStorage !== 'undefined' ? localStorage.getItem('zpace.registry') : null;
-  return override ? override.replace(/[/]+$/, '') : `https://raw.githubusercontent.com/${REGISTRY_REPO}/${REGISTRY_BRANCH}`;
+  if (override) return [override.replace(/[/]+$/, '')];
+  return [`https://raw.githubusercontent.com/${REGISTRY_REPO}/refs/heads/${REGISTRY_BRANCH}`, `https://cdn.jsdelivr.net/gh/${REGISTRY_REPO}@${REGISTRY_BRANCH}`];
 }
-export const indexUrl = () => `${registryRaw()}/plugins.json`;
+/** The preferred base (for URLs shown or used once, like icons). */
+export const registryRaw = () => registryBases()[0];
 
 /** What a script may touch; shown before install. */
 export type PluginPermission = 'commands' | 'panes' | 'events' | 'agents' | 'shell' | 'files' | 'network' | 'notifications' | 'clipboard' | 'notes' | 'media';

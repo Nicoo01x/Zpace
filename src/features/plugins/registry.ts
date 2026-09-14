@@ -6,7 +6,7 @@ import { homeDir } from '@/features/mcp/mcp-config';
 import { isTauri } from '@/lib/platform';
 import { toast } from '@/features/notifications/toast-store';
 import { t } from '@/i18n';
-import { indexUrl, registryRaw, TEXT_EXTENSIONS, olderThan, validateManifest, type PluginManifest, type RegistryEntry, type RegistryIndex } from './manifest';
+import { registryBases, TEXT_EXTENSIONS, olderThan, validateManifest, type PluginManifest, type RegistryEntry, type RegistryIndex } from './manifest';
 import { activate, deactivate } from './runtime';
 
 /**
@@ -22,10 +22,7 @@ export async function refreshIndex(force = false): Promise<RegistryIndex | null>
   const s = usePlugins.getState();
   if (!force && s.index && Date.now() - s.fetchedAt < INDEX_TTL) return s.index;
   try {
-    const url = indexUrl();
-    const res = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status} · ${url}`);
-    const index = (await res.json()) as RegistryIndex;
+    const index = JSON.parse(await fetchText(`plugins.json?t=${Date.now()}`)) as RegistryIndex;
     if (!Array.isArray(index.plugins)) throw new Error('malformed index');
     index.plugins = index.plugins.filter((p) => validateManifest(p).length === 0 && typeof p.path === 'string' && Array.isArray(p.files));
     s.setIndex(index);
@@ -46,10 +43,19 @@ async function ensureDir(path: string) {
   if (!(await pathExists(path))) await createDir(path);
 }
 
-async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`${res.status} ${url.split('/').slice(-2).join('/')}`);
-  return res.text();
+/** A file of the registry (a path under the repo), from the first base that answers. */
+async function fetchText(path: string): Promise<string> {
+  let last = '';
+  for (const base of registryBases()) {
+    try {
+      const res = await fetch(`${base}/${path}`, { cache: 'no-store' });
+      if (res.ok) return await res.text();
+      last = `HTTP ${res.status} · ${new URL(base).host}`;
+    } catch (e) {
+      last = e instanceof Error ? e.message : String(e);
+    }
+  }
+  throw new Error(`${last} · ${path.split('?')[0]}`);
 }
 
 export async function install(entry: RegistryEntry): Promise<void> {
@@ -66,7 +72,7 @@ export async function install(entry: RegistryEntry): Promise<void> {
     const dir = `${await appDataDir()}\\plugins\\${entry.id}`;
     await ensureDir(dir);
     // the manifest first — the registry copy may be older than the folder's own
-    const manifestText = await fetchText(`${registryRaw()}/${entry.path}/plugin.json`);
+    const manifestText = await fetchText(`${entry.path}/plugin.json`);
     const manifest = JSON.parse(manifestText) as PluginManifest;
     const problems = validateManifest(manifest);
     if (problems.length) throw new Error(problems[0]);
@@ -74,7 +80,7 @@ export async function install(entry: RegistryEntry): Promise<void> {
     await writeTextFile(`${dir}\\plugin.json`, manifestText);
     for (const file of entry.files) {
       if (file === 'plugin.json' || !TEXT_EXTENSIONS.test(file) || file.includes('..')) continue;
-      const text = await fetchText(`${registryRaw()}/${entry.path}/${file}`);
+      const text = await fetchText(`${entry.path}/${file}`);
       const target = `${dir}\\${file.replace(/\//g, '\\')}`;
       const parent = target.slice(0, target.lastIndexOf('\\'));
       await ensureDir(parent);

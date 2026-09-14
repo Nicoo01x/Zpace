@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { LivingItem, LivingList, LivingSwitch } from '@/components/ui/Living';
 import { openUrl } from '@/native/system';
 import { useUI } from '@/stores/ui';
-import { registryRaw, REGISTRY_URL, REGISTRY_REPO, avatarOf, profileOf, type PluginManifest, type RegistryEntry } from './manifest';
+import { registryBases, REGISTRY_URL, REGISTRY_REPO, avatarOf, profileOf, type PluginManifest, type RegistryEntry } from './manifest';
 import { install, refreshIndex, setEnabled, uninstall, updateFor } from './registry';
 import { openPane } from './runtime';
 
@@ -124,16 +124,25 @@ const iconCache = new Map<string, Promise<string | null>>();
 /** The plugin's SVG icon as a data URL (an <img> cannot run a script), or null. */
 function useIcon(entry: RegistryEntry | undefined, manifest: PluginManifest) {
   const [src, setSrc] = useState<string | null>(null);
-  const url = manifest.icon && entry ? `${registryRaw()}/${entry.path}/${manifest.icon}` : null;
+  const url = manifest.icon && entry ? `${entry.path}/${manifest.icon}` : null;
   useEffect(() => {
     if (!url) return;
     if (!iconCache.has(url)) {
       iconCache.set(
         url,
-        fetch(url)
-          .then((r) => (r.ok ? r.text() : null))
-          .then((txt) => (txt && txt.includes('<svg') ? `data:image/svg+xml;utf8,${encodeURIComponent(txt)}` : null))
-          .catch(() => null),
+        (async () => {
+          for (const base of registryBases()) {
+            try {
+              const r = await fetch(`${base}/${url}`);
+              if (!r.ok) continue;
+              const txt = await r.text();
+              if (txt.includes('<svg')) return `data:image/svg+xml;utf8,${encodeURIComponent(txt)}`;
+            } catch {
+              /* next base */
+            }
+          }
+          return null;
+        })(),
       );
     }
     let cancelled = false;
@@ -183,7 +192,8 @@ function Tags({ m }: { m: PluginManifest }) {
 
 /** The plugin's pictures, from the repo: the first as a banner, the rest as dots; click opens the lightbox. */
 function Screenshots({ entry }: { entry: RegistryEntry }) {
-  const shots = (entry.screenshots ?? []).map((sh) => `${registryRaw()}/${entry.path}/${sh}`);
+  // pictures load in an <img>, which cannot fall back — jsDelivr is the steadier host for those
+  const shots = (entry.screenshots ?? []).map((sh) => `${registryBases().at(-1)}/${entry.path}/${sh}`);
   const [i, setI] = useState(0);
   const openLightbox = useUI((s) => s.openLightbox);
   if (!shots.length) return null;
