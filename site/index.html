@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zpace — the desktop workspace for coding agents</title>
+<meta name="description" content="Claude Code, Codex, Gemini CLI and OpenCode in one window, with the terminals, editor, notes, git and browser you leave the terminal for. Free forever, local-first, for Windows, macOS and Linux.">
+<meta property="og:title" content="Zpace — the desktop workspace for coding agents">
+<meta property="og:description" content="Your coding agents, one workspace. Free forever, local-first. Windows, macOS, Linux.">
+<meta property="og:image" content="https://nicoo01x.github.io/Zpace/img/hero.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nicoo01x.github.io/Zpace/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#f4f4f2">
+<link rel="icon" href="img/tile.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas: #f4f4f2; --bg: #fcfcfb; --surface: #fff; --ink: #1d1d1f; --ink-2: #6e6e73; --ink-3: #9c9ca1;
+    --accent: #2f6fde; --accent-soft: rgba(47, 111, 222, .12); --warm: #d97a45; --claude: #D97757; --success: #2e9e5b;
+    --border: rgba(0,0,0,.08); --border-strong: rgba(0,0,0,.14);
+    --dark: #0d0d0e; --dark-2: #161618;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+    --ease: cubic-bezier(.2,.7,.2,1);
+    --gutter: clamp(20px, 5vw, 72px);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: auto; }
+  html.lenis, html.lenis body { height: auto; }
+  .lenis.lenis-smooth { scroll-behavior: auto !important; }
+  body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overflow-x: clip; }
+  a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; display: block; }
+  button { font: inherit; }
+  ::selection { background: var(--accent); color: #fff; }
+
+  .wrap { width: min(1180px, 100% - 2 * var(--gutter)); margin-inline: auto; }
+  .kicker { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .h1 { font-size: clamp(44px, 8.2vw, 112px); line-height: .96; letter-spacing: -.04em; font-weight: 800; margin: 0; }
+  .h2 { font-size: clamp(34px, 5.2vw, 68px); line-height: 1; letter-spacing: -.035em; font-weight: 800; margin: 0; }
+  .h3 { font-size: clamp(22px, 2.4vw, 30px); letter-spacing: -.02em; font-weight: 700; margin: 0; line-height: 1.15; }
+  .lead { font-size: clamp(17px, 1.5vw, 21px); line-height: 1.5; color: var(--ink-2); max-width: 56ch; }
+  .mono { font-family: var(--mono); }
+  .dim { color: var(--ink-2); }
+
+  /* word masks for the split headings */
+  .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .08em; margin-bottom: -.08em; }
+  .w > span { display: inline-block; will-change: transform; }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 22px; border-radius: 999px; font-weight: 600; font-size: 15px; border: 0; cursor: pointer; transition: transform .25s var(--ease), box-shadow .25s var(--ease), background .2s; white-space: nowrap; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--ink); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2), 0 8px 24px -8px rgba(0,0,0,.45); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(0,0,0,.2), 0 16px 32px -10px rgba(0,0,0,.5); }
+  .btn-ghost { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--border-strong) inset; }
+  .btn-ghost:hover { background: #f7f7f6; transform: translateY(-2px); }
+  .btn svg { width: 18px; height: 18px; flex: none; }
+  .btn small { font-weight: 500; color: rgba(255,255,255,.6); font-size: 12px; }
+
+  /* nav */
+  .nav { position: fixed; inset: 0 0 auto 0; z-index: 50; height: 64px; display: flex; align-items: center; transition: background .3s, box-shadow .3s, backdrop-filter .3s; }
+  .nav.solid { background: rgba(244,244,242,.78); backdrop-filter: saturate(1.4) blur(14px); box-shadow: 0 1px 0 var(--border); }
+  .nav.on-dark { background: rgba(13,13,14,.7); box-shadow: 0 1px 0 rgba(255,255,255,.08); color: #fff; }
+  .nav.on-dark .nav-links { color: rgba(255,255,255,.6); } .nav.on-dark .nav-links a:hover { color: #fff; }
+  .nav.on-dark .btn-ghost { background: rgba(255,255,255,.08); color: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.16) inset; }
+  .nav.on-dark .btn-primary { background: #fff; color: #000; }
+  .nav .wrap { display: flex; align-items: center; gap: 28px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.02em; font-size: 17px; }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; }
+  .nav-links { display: flex; gap: 22px; font-size: 14px; font-weight: 500; color: var(--ink-2); margin-left: 12px; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta { margin-left: auto; display: flex; gap: 10px; }
+  .nav .btn { height: 38px; padding: 0 16px; font-size: 14px; }
+  @media (max-width: 760px) { .nav-links { display: none; } .nav .btn-ghost { display: none; } }
+
+  /* hero */
+  .hero { position: relative; padding: 128px 0 40px; overflow: clip; }
+  .hero-glow { position: absolute; inset: -20% -10% auto; height: 120vh; background: radial-gradient(60% 50% at 50% 30%, rgba(47,111,222,.16), transparent 70%), radial-gradient(40% 40% at 80% 20%, rgba(217,122,69,.12), transparent 70%); pointer-events: none; }
+  .hero-top { text-align: center; position: relative; }
+  .pills { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 28px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; background: var(--surface); box-shadow: 0 0 0 1px var(--border); font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+  .pill b { color: var(--ink); font-weight: 600; }
+  .hero .lead { margin: 22px auto 30px; text-align: center; }
+  .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .hero-meta { margin-top: 14px; font-size: 13px; color: var(--ink-3); }
+  .engines { display: flex; align-items: center; justify-content: center; gap: 26px; margin-top: 40px; flex-wrap: wrap; }
+  .engines .kicker { margin-right: 6px; }
+  .engine { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+  .engine svg { width: 18px; height: 18px; }
+
+  .stage { position: relative; margin: 54px auto 0; width: min(1180px, 100% - 2 * var(--gutter)); perspective: 1800px; }
+  .window { position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 30px 80px -20px rgba(0,0,0,.35); transform-origin: 50% 0; will-change: transform; background: #fff; }
+  .window img { width: 100%; height: auto; }
+  .float { position: absolute; z-index: 3; background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 1px var(--border), 0 20px 40px -16px rgba(0,0,0,.35); padding: 10px 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; will-change: transform; }
+  .float .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+  .float b { display: block; font-weight: 600; font-size: 13px; }
+  .float span { display: block; color: var(--ink-2); font-size: 12px; }
+  .f1 { left: -3%; top: 18%; } .f2 { right: -4%; top: 30%; } .f3 { left: 4%; bottom: 14%; } .f4 { right: 2%; bottom: 22%; }
+  @media (max-width: 900px) { .float { display: none; } }
+
+  /* island (CSS replica) */
+  .island { position: relative; width: 360px; height: 30px; margin: 0 auto; color: #fff; }
+  .isl-box { position: absolute; left: 50%; top: 0; transform: translateX(-50%); background: #111; border-radius: 15px; box-shadow: 0 1px 3px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06); overflow: hidden; width: 96px; height: 30px; }
+  .isl-row { position: absolute; left: 0; top: 0; height: 30px; display: flex; align-items: center; gap: 0; padding: 0 12px 0 10px; white-space: nowrap; font-size: 12px; }
+  .zm { display: inline-block; width: 12px; height: 12px; background: currentColor; -webkit-mask: url(img/mark.png) center / contain no-repeat; mask: url(img/mark.png) center / contain no-repeat; flex: none; }
+  .isl-row .name { font-weight: 600; margin-left: 6px; letter-spacing: -.01em; }
+  .isl-chip { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; padding-left: 10px; border-left: 1px solid rgba(255,255,255,.2); font-size: 11.5px; color: rgba(255,255,255,.85); font-variant-numeric: tabular-nums; opacity: 0; }
+  .isl-chip.dim { color: rgba(255,255,255,.55); }
+  .isl-card { position: absolute; left: 0; top: 30px; width: 360px; padding: 4px 12px 12px; opacity: 0; }
+  .isl-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.45); margin-bottom: 8px; }
+  .isl-body { display: flex; gap: 10px; align-items: flex-start; }
+  .glyph { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none; background: rgba(255,255,255,.1); overflow: hidden; }
+  .glyph img { width: 100%; height: 100%; object-fit: cover; }
+  .isl-title { font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+  .isl-sum { font-size: 12px; color: rgba(255,255,255,.6); margin-top: 1px; }
+  .isl-btns { display: flex; gap: 6px; margin-top: 8px; }
+  .isl-btn { height: 26px; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,.12); color: #fff; font-size: 12px; display: inline-flex; align-items: center; }
+  .isl-btn.primary { background: #fff; color: #000; font-weight: 600; }
+
+  /* marquee */
+  .marquee { height: 100vh; display: flex; align-items: center; overflow: hidden; background: var(--bg); box-shadow: 0 -1px 0 var(--border), 0 1px 0 var(--border); }
+  .track { display: flex; gap: .35em; white-space: nowrap; font-size: clamp(80px, 13vw, 180px); font-weight: 800; letter-spacing: -.05em; line-height: 1; padding-left: 8vw; will-change: transform; }
+  .track span { padding-right: .35em; }
+  .track .o { color: transparent; -webkit-text-stroke: 2px var(--ink); }
+  .track .a { color: var(--accent); }
+  .marquee-note { position: absolute; left: var(--gutter); bottom: 32px; font-size: 13px; color: var(--ink-3); }
+
+  /* sections */
+  section.block { padding: clamp(80px, 12vw, 160px) 0; position: relative; }
+  .head { max-width: 760px; margin-bottom: clamp(40px, 6vw, 80px); }
+  .head .lead { margin-top: 18px; }
+
+  /* pinned feature stack */
+  .stack { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 5vw, 80px); align-items: start; }
+  .steps { display: flex; flex-direction: column; }
+  .step { min-height: 62vh; display: flex; flex-direction: column; justify-content: center; padding: 20px 0; opacity: .28; transition: opacity .4s var(--ease); }
+  .step.active { opacity: 1; }
+  .step .n { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-bottom: 14px; }
+  .step p { color: var(--ink-2); font-size: 16px; margin: 12px 0 0; max-width: 40ch; }
+  .stage-pin { position: sticky; top: 90px; }
+  .shots { position: relative; aspect-ratio: 848 / 820; max-height: calc(100vh - 140px); border-radius: 14px; overflow: hidden; background: var(--surface); box-shadow: 0 0 0 1px var(--border), 0 30px 60px -30px rgba(0,0,0,.35); }
+  .shots img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; opacity: 0; transform: scale(1.03); transition: opacity .6s var(--ease), transform .8s var(--ease); }
+  .shots img.on { opacity: 1; transform: scale(1); }
+  @media (max-width: 860px) { .stack { grid-template-columns: 1fr; } .stage-pin { position: relative; top: 0; } .step { min-height: 0; opacity: 1; padding: 22px 0; } .shots { aspect-ratio: 4/3; } }
+
+  /* dark: the island */
+  .dark { background: var(--dark); color: #fff; }
+  .dark .kicker { color: rgba(255,255,255,.45); }
+  .dark .lead { color: rgba(255,255,255,.62); }
+  .island-scene { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; align-items: center; padding: 100px 0 60px; }
+  .island-stage { display: grid; place-items: start center; padding-top: 4vh; }
+  @media (min-width: 900px) { .island { transform: scale(1.9); transform-origin: top center; } }
+  .island-copy { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .island-copy div { opacity: .35; transition: opacity .4s; }
+  .island-copy div.on { opacity: 1; }
+  .island-copy b { display: block; font-size: 15px; margin-bottom: 4px; }
+  .island-copy span { font-size: 14px; color: rgba(255,255,255,.55); }
+  @media (max-width: 760px) { .island-copy { grid-template-columns: 1fr; gap: 12px; } .island { transform: scale(.9); transform-origin: top center; } }
+
+  /* agents trio */
+  .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .card { background: var(--surface); border-radius: 18px; box-shadow: 0 0 0 1px var(--border); overflow: hidden; display: flex; flex-direction: column; transform-style: preserve-3d; transition: box-shadow .3s var(--ease); }
+  .card:hover { box-shadow: 0 0 0 1px var(--border-strong), 0 30px 60px -30px rgba(0,0,0,.35); }
+  .card .shot { aspect-ratio: 4 / 3; overflow: hidden; background: var(--canvas); position: relative; }
+  .card .shot img { width: 100%; height: 100%; object-fit: cover; object-position: top left; transform: scale(1.02); transition: transform .8s var(--ease); }
+  .card:hover .shot img { transform: scale(1.06); }
+  .card .txt { padding: 20px 22px 24px; }
+  .card .txt p { color: var(--ink-2); margin: 8px 0 0; font-size: 15px; }
+  @media (max-width: 860px) { .trio { grid-template-columns: 1fr; } }
+
+  /* plugins */
+  .plugins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .plug { background: var(--surface); border-radius: 16px; box-shadow: 0 0 0 1px var(--border); padding: 18px; display: flex; gap: 14px; align-items: flex-start; transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
+  .plug:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px var(--border-strong), 0 20px 40px -24px rgba(0,0,0,.4); }
+  .plug img { width: 44px; height: 44px; border-radius: 11px; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  .plug b { display: block; font-size: 15px; letter-spacing: -.01em; }
+  .plug p { margin: 4px 0 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+  .plug .by { margin-top: 10px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+  .plug .by img { width: 16px; height: 16px; border-radius: 50%; box-shadow: none; }
+  .code { margin-top: 40px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; }
+  pre.snippet { margin: 0; background: var(--dark); color: #e8e8ea; border-radius: 16px; padding: 22px 24px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow: auto; box-shadow: 0 30px 60px -30px rgba(0,0,0,.5); }
+  pre.snippet .k { color: #c792ea; } pre.snippet .s { color: #c3e88d; } pre.snippet .f { color: #82aaff; } pre.snippet .c { color: rgba(255,255,255,.35); }
+  @media (max-width: 860px) { .code { grid-template-columns: 1fr; } }
+
+  /* free forever */
+  .stamps { height: 100vh; display: grid; place-items: center; text-align: center; overflow: hidden; background: var(--bg); box-shadow: 0 -1px 0 var(--border), 0 1px 0 var(--border); }
+  .stamps .h1 { font-size: clamp(56px, 12vw, 180px); }
+  .stamp { display: inline-block; will-change: transform, opacity; }
+  .stamp.blue { color: var(--accent); }
+  .stamp.out { color: transparent; -webkit-text-stroke: 3px var(--ink); }
+  .stamps .lead { margin: 30px auto 0; text-align: center; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 60px; }
+  .fact { background: var(--surface); border-radius: 16px; box-shadow: 0 0 0 1px var(--border); padding: 20px; text-align: left; }
+  .fact b { display: block; font-size: 15px; margin-bottom: 4px; }
+  .fact span { font-size: 13.5px; color: var(--ink-2); }
+  @media (max-width: 860px) { .facts { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .facts { grid-template-columns: 1fr; } }
+
+  /* download */
+  .dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; }
+  .dl .card { padding: 24px; gap: 8px; }
+  .dl .os { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
+  .dl .os svg { width: 22px; height: 22px; }
+  .dl p { margin: 0 0 16px; color: var(--ink-2); font-size: 14px; flex: 1; }
+  .dl .btn { width: 100%; justify-content: center; }
+  .dl .alt { margin-top: 10px; font-size: 12.5px; color: var(--ink-3); display: flex; gap: 10px; flex-wrap: wrap; }
+  .dl .alt a { text-decoration: underline; text-underline-offset: 3px; }
+  .dl-note { margin-top: 18px; font-size: 13px; color: var(--ink-3); }
+  @media (max-width: 860px) { .dl { grid-template-columns: 1fr; } }
+
+  /* footer */
+  footer { padding: 60px 0 40px; box-shadow: 0 -1px 0 var(--border); }
+  .foot { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; font-size: 14px; color: var(--ink-2); }
+  .foot .author { display: flex; align-items: center; gap: 10px; }
+  .foot .author img { width: 28px; height: 28px; border-radius: 50%; }
+  .foot .links { margin-left: auto; display: flex; gap: 18px; }
+  .foot .links a:hover { color: var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) { .w > span { transform: none !important; } .step { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<nav class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="img/tile.png" alt=""> Zpace</a>
+    <div class="nav-links">
+      <a href="#window">The window</a>
+      <a href="#island">The island</a>
+      <a href="#agents">Agents</a>
+      <a href="#plugins">Plugins</a>
+      <a href="#free">Free forever</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="https://github.com/Nicoo01x/Zpace" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.9 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg> GitHub</a>
+      <a class="btn btn-primary" href="#download" data-dl-nav>Download</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="hero-glow"></div>
+  <div class="wrap hero-top">
+    <div class="pills" data-reveal>
+      <span class="pill"><b>Free</b> forever</span>
+      <span class="pill">Local-first · no account</span>
+      <span class="pill">Windows · macOS · Linux</span>
+      <span class="pill">Open source</span>
+    </div>
+    <h1 class="h1" data-split>Your coding agents, one workspace.</h1>
+    <p class="lead" data-reveal>Claude Code, Codex, Gemini CLI and OpenCode — with the terminals, editor, notes, git and browser you keep leaving the terminal for. Everything remembered, per project.</p>
+    <div class="hero-cta" data-reveal>
+      <a class="btn btn-primary" href="#download" data-dl-hero><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><span data-dl-label>Download</span></a>
+      <a class="btn btn-ghost" href="https://github.com/Nicoo01x/Zpace" target="_blank" rel="noopener">Read the code</a>
+    </div>
+    <div class="hero-meta" data-reveal><span data-release-line>Signed installers on GitHub releases · nothing leaves your machine</span></div>
+    <div class="engines" data-reveal>
+      <span class="kicker">Works with</span>
+      <span class="engine"><svg viewBox="0 0 24 24" fill="#D97757"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></svg> Claude Code</span>
+      <span class="engine"><svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path clip-rule="evenodd" d="M8.086.457a6.105 6.105 0 013.046-.415c1.333.153 2.521.72 3.564 1.7a.117.117 0 00.107.029c1.408-.346 2.762-.224 4.061.366l.063.03.154.076c1.357.703 2.33 1.77 2.918 3.198.278.679.418 1.388.421 2.126a5.655 5.655 0 01-.18 1.631.167.167 0 00.04.155 5.982 5.982 0 011.578 2.891c.385 1.901-.01 3.615-1.183 5.14l-.182.22a6.063 6.063 0 01-2.934 1.851.162.162 0 00-.108.102c-.255.736-.511 1.364-.987 1.992-1.199 1.582-2.962 2.462-4.948 2.451-1.583-.008-2.986-.587-4.21-1.736a.145.145 0 00-.14-.032c-.518.167-1.04.191-1.604.185a5.924 5.924 0 01-2.595-.622 6.058 6.058 0 01-2.146-1.781c-.203-.269-.404-.522-.551-.821a7.74 7.74 0 01-.495-1.283 6.11 6.11 0 01-.017-3.064.166.166 0 00.008-.074.115.115 0 00-.037-.064 5.958 5.958 0 01-1.38-2.202 5.196 5.196 0 01-.333-1.589 6.915 6.915 0 01.188-2.132c.45-1.484 1.309-2.648 2.577-3.493.282-.188.55-.334.802-.438.286-.12.573-.22.861-.304a.129.129 0 00.087-.087A6.016 6.016 0 015.635 2.31C6.315 1.464 7.132.846 8.086.457zm-.804 7.85a.848.848 0 00-1.473.842l1.694 2.965-1.688 2.848a.849.849 0 001.46.864l1.94-3.272a.849.849 0 00.007-.854l-1.94-3.393zm5.446 6.24a.849.849 0 000 1.695h4.848a.849.849 0 000-1.696h-4.848z"/></svg> Codex</span>
+      <span class="engine"><svg viewBox="0 0 24 24"><defs><linearGradient id="g0" gradientUnits="userSpaceOnUse" x1="7" x2="11" y1="15.5" y2="12"><stop stop-color="#08B962"/><stop offset="1" stop-color="#08B962" stop-opacity="0"/></linearGradient><linearGradient id="g1" gradientUnits="userSpaceOnUse" x1="8" x2="11.5" y1="5.5" y2="11"><stop stop-color="#F94543"/><stop offset="1" stop-color="#F94543" stop-opacity="0"/></linearGradient><linearGradient id="g2" gradientUnits="userSpaceOnUse" x1="3.5" x2="17.5" y1="13.5" y2="12"><stop stop-color="#FABC12"/><stop offset=".46" stop-color="#FABC12" stop-opacity="0"/></linearGradient></defs><path id="gp" d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="#3186FF"/><use href="#gp" fill="url(#g0)"/><use href="#gp" fill="url(#g1)"/><use href="#gp" fill="url(#g2)"/></svg> Gemini CLI</span>
+      <span class="engine"><svg viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#131010"/><rect x="6" y="6" width="500" height="500" rx="108" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="12"/><path d="M320 224V352H192V224H320Z" fill="#7a7676"/><path fill-rule="evenodd" clip-rule="evenodd" d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z" fill="#fff"/></svg> OpenCode</span>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="float f1" data-speed="1.4"><span class="ic" style="background:#fbeee8"><svg viewBox="0 0 24 24" width="16" height="16" fill="#D97757"><use href="#claude-path"/></svg></span><div><b>Claude finished</b><span>Document the etag helper · 3 files</span></div></div>
+    <div class="float f2" data-speed="-1.1"><span class="ic" style="background:#111;color:#fff"><span class="zm" style="width:14px;height:14px"></span></span><div><b>Island</b><span>♪ Bailar Pegadito · ⏱ 24:58 · ☁️ 7°</span></div></div>
+    <div class="float f3" data-speed="-1.6"><span class="ic" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 4v16M16 4v16"/></svg></span><div><b>Boards</b><span>Ship 5.2 → Benchmarks</span></div></div>
+    <div class="float f4" data-speed="1.2"><span class="ic" style="background:#e8f5ec;color:#2e9e5b"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Arena</b><span>V1 chosen · merged to master</span></div></div>
+    <div class="window" id="window"><img src="img/hero.png" alt="Zpace: a Claude Code session next to the project's files, with the island in the title bar" width="1360" height="860" fetchpriority="high"></div>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute"><defs><path id="claude-path" d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></defs></svg>
+
+<section class="marquee" id="marquee">
+  <div class="track" id="track">
+    <span>Terminals</span><span class="o">Editor</span><span class="a">Notes</span><span>Boards</span><span class="o">Agents</span><span class="a">Arena</span><span class="o">Git</span><span>Browser</span><span class="a">Plugins</span><span>One window.</span>
+  </div>
+  <div class="marquee-note">Everything you leave the terminal for. Scroll →</div>
+</section>
+
+<section class="block" id="window">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker" data-reveal>The window</div>
+      <h2 class="h2" data-split>Stop alt-tabbing around your agent.</h2>
+      <p class="lead" data-reveal>Every project keeps its sessions, terminals, notes and layout. Close the app, open it a week later, and it is exactly where you left it.</p>
+    </div>
+    <div class="stack">
+      <div class="steps" id="steps">
+        <div class="step active" data-shot="editor"><div class="n">01 — Editor</div><h3 class="h3">See what the agent wrote, as it writes it.</h3><p>A real editor with a timeline: every file an agent touched, before and after, with "Ask Claude" one click away.</p></div>
+        <div class="step" data-shot="review"><div class="n">02 — Review</div><h3 class="h3">Keep the good lines, discard the rest.</h3><p>A review pane over the session's changes. Keep or discard per file, per hunk — then commit.</p></div>
+        <div class="step" data-shot="git"><div class="n">03 — Git</div><h3 class="h3">Stage, commit, push. Without leaving.</h3><p>Changes, branches and history in a side panel. Commit messages the agent can draft for you.</p></div>
+        <div class="step" data-shot="board"><div class="n">04 — Notes & boards</div><h3 class="h3">Think next to the work.</h3><p>Notes with real formatting and boards with cards you can drag — per project, searchable, and readable by your agents.</p></div>
+      </div>
+      <div class="stage-pin">
+        <div class="shots" id="shots">
+          <img src="img/editor.png" data-shot="editor" class="on" alt="The editor with a file Claude Code just edited" loading="lazy">
+          <img src="img/review.png" data-shot="review" alt="The review pane with a diff to keep or discard" loading="lazy">
+          <img src="img/git.png" data-shot="git" alt="The git panel" loading="lazy">
+          <img src="img/board.png" data-shot="board" alt="A board with cards" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="dark" id="island">
+  <div class="wrap island-scene" id="island-scene">
+    <div class="head" style="margin-bottom:0">
+      <div class="kicker" data-reveal>The island</div>
+      <h2 class="h2" data-split>News lands in the title bar.</h2>
+      <p class="lead" data-reveal>Agents finishing, questions waiting, commits, timers, the track that is playing. It unfolds, you glance, it folds. No toasts unless you want them.</p>
+    </div>
+    <div class="island-stage">
+      <div class="island" id="isl">
+        <div class="isl-box" id="isl-box">
+          <div class="isl-row"><span class="zm"></span><span class="name">Zpace</span>
+            <span class="isl-chip dim" id="chip-timer">🍅 <span>24:58</span></span>
+            <span class="isl-chip" id="chip-music">♪ <span>Bailar Pegadito — FranMVP</span></span>
+          </div>
+          <div class="isl-card" id="card-claude">
+            <div class="isl-head"><span>Claude Code · touch-proj</span><span>just now</span></div>
+            <div class="isl-body"><span class="glyph" style="background:#D97757"><svg viewBox="0 0 24 24" width="16" height="16" fill="#fff"><use href="#claude-path"/></svg></span><div><div class="isl-title">Claude finished</div><div class="isl-sum">Document the etag helper · 3 files · +41 −2</div><div class="isl-btns"><span class="isl-btn primary">Review changes</span><span class="isl-btn">Open session</span></div></div></div>
+          </div>
+          <div class="isl-card" id="card-music">
+            <div class="isl-head"><span>Now Playing</span><span>just now</span></div>
+            <div class="isl-body"><span class="glyph"><img src="img/plugins/now-playing.svg" alt=""></span><div><div class="isl-title">Bailar Pegadito (Salas)</div><div class="isl-sum">FranMVP · Bailar Pegadito</div><div class="isl-btns"><span class="isl-btn">⏮</span><span class="isl-btn primary">⏸</span><span class="isl-btn">⏭</span><span class="isl-btn">Open</span></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="island-copy" id="island-copy">
+      <div data-k="0"><b>An agent finished</b><span>The island unfolds with what changed and a button to review it.</span></div>
+      <div data-k="1"><b>Readouts from plugins</b><span>A focus timer, the track playing, the weather — live, in the compact island.</span></div>
+      <div data-k="2"><b>Cards with buttons</b><span>Click a readout and it opens: the cover, play, pause, next. Plugins build these with three lines.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="agents">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker" data-reveal>Agents, rooms, arena</div>
+      <h2 class="h2" data-split>Not one assistant. A team.</h2>
+      <p class="lead" data-reveal>Agents are personas on top of Claude Code — their own instructions, skills, knowledge and servers. Put several in a room. Race them in an arena.</p>
+    </div>
+    <div class="trio">
+      <article class="card" data-reveal data-tilt><div class="shot"><img src="img/palette.png" alt="The command palette" loading="lazy" style="object-position:top left"></div><div class="txt"><h3 class="h3">Agents</h3><p>A reviewer, a designer, a release manager. Each with its rules, its library of documents, its MCP servers and tools. One click to chat with any of them in the current project.</p></div></article>
+      <article class="card" data-reveal data-tilt><div class="shot"><img src="img/room.png" alt="A room with two agents debating" loading="lazy"></div><div class="txt"><h3 class="h3">Rooms</h3><p>Several agents, one conversation. Mention <span class="mono">@E2E-Reviewer</span> and they answer each other, hand things off, and disagree when they should.</p></div></article>
+      <article class="card" data-reveal data-tilt><div class="shot"><img src="img/arena.png" alt="The arena comparing two variants side by side" loading="lazy"></div><div class="txt"><h3 class="h3">Arena</h3><p>The same task, several variants, each in its own worktree. Compare the diffs side by side, pick one, merge. The losers vanish.</p></div></article>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="plugins" style="background:var(--bg); box-shadow: 0 -1px 0 var(--border), 0 1px 0 var(--border)">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker" data-reveal>Plugins</div>
+      <h2 class="h2" data-split>Make it yours. Or make one.</h2>
+      <p class="lead" data-reveal>A library inside the app, fed by an open registry. Panes, island readouts, palette commands, agents, skills, themes — anyone can publish one with a pull request, under their own name.</p>
+    </div>
+    <div class="plugins-grid" id="plugins-grid">
+      <a class="plug" href="https://github.com/Nicoo01x/zpace-plugins/tree/main/plugins/kanban" target="_blank" rel="noopener"><img src="img/plugins/kanban.svg" alt=""><div><b>Boards</b><p>A Trello-style board per project, wired to your notes: any note becomes a card.</p><div class="by"><img src="https://github.com/Nicoo01x.png?size=32" alt="">Nicolás Cabanillas</div></div></a>
+      <a class="plug" href="https://github.com/Nicoo01x/zpace-plugins/tree/main/plugins/focus-timer" target="_blank" rel="noopener"><img src="img/plugins/focus-timer.svg" alt=""><div><b>Focus Timer</b><p>A Pomodoro that lives in the island — the countdown ticks next to the Zpace mark.</p><div class="by"><img src="https://github.com/Nicoo01x.png?size=32" alt="">Nicolás Cabanillas</div></div></a>
+      <a class="plug" href="https://github.com/Nicoo01x/zpace-plugins/tree/main/plugins/now-playing" target="_blank" rel="noopener"><img src="img/plugins/now-playing.svg" alt=""><div><b>Now Playing</b><p>Spotify or any player: the track in the island; click it for the cover and play / pause / next.</p><div class="by"><img src="https://github.com/Nicoo01x.png?size=32" alt="">Nicolás Cabanillas</div></div></a>
+      <a class="plug" href="https://github.com/Nicoo01x/zpace-plugins/tree/main/plugins/calendar" target="_blank" rel="noopener"><img src="img/plugins/calendar.svg" alt=""><div><b>Calendar</b><p>A month view, reminders in the island ten minutes before, a note for any event.</p><div class="by"><img src="https://github.com/Nicoo01x.png?size=32" alt="">Nicolás Cabanillas</div></div></a>
+      <a class="plug" href="https://github.com/Nicoo01x/zpace-plugins/tree/main/plugins/weather" target="_blank" rel="noopener"><img src="img/plugins/weather.svg" alt=""><div><b>Weather</b><p>Now, the next hours and the week. The temperature sits in the island. No key.</p><div class="by"><img src="https://github.com/Nicoo01x.png?size=32" alt="">Nicolás Cabanillas</div></div></a>
+      <a class="plug" href="https://github.com/Nicoo01x/zpace-plugins/tree/main/plugins/code-reviewer" target="_blank" rel="noopener"><img src="img/plugins/code-reviewer.svg" alt=""><div><b>Code Reviewer</b><p>A ready-made agent: strict, kind, reads diffs, flags real bugs first, never rewrites your style.</p><div class="by"><img src="https://github.com/Nicoo01x.png?size=32" alt="">Nicolás Cabanillas</div></div></a>
+      <a class="plug" href="https://github.com/Nicoo01x/zpace-plugins/tree/main/plugins/conventional-commits" target="_blank" rel="noopener"><img src="img/plugins/conventional-commits.svg" alt=""><div><b>Conventional Commits</b><p>A Claude Code skill that writes the commit message from what is staged.</p><div class="by"><img src="https://github.com/Nicoo01x.png?size=32" alt="">Nicolás Cabanillas</div></div></a>
+      <a class="plug" href="https://github.com/Nicoo01x/zpace-plugins/tree/main/plugins/rose-pine" target="_blank" rel="noopener"><img src="img/plugins/rose-pine.svg" alt=""><div><b>Rosé Pine</b><p>The palette, main and Dawn: colours, terminal scheme and editor theme together.</p><div class="by"><img src="https://github.com/Nicoo01x.png?size=32" alt="">Nicolás Cabanillas</div></div></a>
+    </div>
+    <div class="code">
+      <div data-reveal>
+        <h3 class="h3">A plugin is a folder.</h3>
+        <p class="dim" style="margin:12px 0 18px">A <span class="mono">plugin.json</span>, a script with <span class="mono">activate(zpace)</span>, maybe an HTML pane. The API is permission-gated by the manifest, documented in the registry, and the app shows who made it.</p>
+        <a class="btn btn-ghost" href="https://github.com/Nicoo01x/zpace-plugins" target="_blank" rel="noopener">Read the plugin API</a>
+      </div>
+<pre class="snippet" data-reveal id="snippet"><span class="k">export function</span> <span class="f">activate</span>(zpace) {
+  <span class="c">// a readout in the island</span>
+  zpace.island.set({ icon: <span class="s">'🍅'</span>, text: <span class="s">'24:58'</span>, onClick: card });
+
+  <span class="c">// a card with buttons when it is clicked</span>
+  <span class="k">const</span> card = () =&gt; zpace.island.show({
+    title: <span class="s">'Focus block'</span>, lines: [<span class="s">'24:58 left'</span>],
+    buttons: [{ label: <span class="s">'Pause'</span>, primary: <span class="k">true</span>, run: pause }],
+  });
+
+  <span class="c">// and a palette command</span>
+  <span class="k">return</span> zpace.commands.register({ id: <span class="s">'start'</span>, title: <span class="s">'Focus: start'</span>, run: start });
+}</pre>
+    </div>
+  </div>
+</section>
+
+<section class="stamps" id="free">
+  <div class="wrap">
+    <h2 class="h1"><span class="stamp" data-stamp>Free.</span> <span class="stamp blue" data-stamp>Forever.</span> <span class="stamp out" data-stamp>Local.</span></h2>
+    <p class="lead" data-reveal>No account. No cloud. No telemetry. Nothing leaves your machine unless you ask — updates come from GitHub releases, plugins from an open registry, and the code is there to read.</p>
+    <div class="facts">
+      <div class="fact" data-reveal><b>Your keys stay yours</b><span>Zpace drives the CLIs you already have installed. It never sees your API keys.</span></div>
+      <div class="fact" data-reveal><b>A file, not a service</b><span>Sessions, notes and boards live in your app data folder. Back it up, sync it, delete it.</span></div>
+      <div class="fact" data-reveal><b>Light on the machine</b><span>No idle polling, a 30 fps mascot, fetches cached for the session. Built to sit open all day.</span></div>
+      <div class="fact" data-reveal><b>Ten languages</b><span>English, Spanish, Portuguese, French, German, Italian, Japanese, Chinese, Korean, Russian.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="download">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker" data-reveal>Download</div>
+      <h2 class="h2" data-split>Runs on your desk.</h2>
+      <p class="lead" data-reveal>Signed installers for the three platforms. The app checks for updates at launch and shows you the notes before it does anything.</p>
+    </div>
+    <div class="dl">
+      <div class="card" data-reveal><div class="os"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5 11 4.4v7.1H3zM12 4.2 21 3v8.5h-9zM3 12.5h8v7.1L3 18.5zm9 0h9V21l-9-1.2z"/></svg> Windows</div><p>Windows 10 and 11, x64. An NSIS installer; SmartScreen shows a notice on the first run until the app carries a code-signing certificate — <em>More info → Run anyway</em>.</p><a class="btn btn-primary" data-asset="windows" href="https://github.com/Nicoo01x/Zpace/releases/latest">Download .exe</a></div>
+      <div class="card" data-reveal><div class="os"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.5-.2-2.9.9-3.6.9-.8 0-1.9-.8-3.1-.8-1.6 0-3.1.9-3.9 2.4-1.7 2.9-.4 7.2 1.2 9.5.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.1.8c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7 0 0-2.6-1-2.6-3.9zM14 5.6c.7-.8 1.1-1.9 1-3-1 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.5 2.8-1.3z"/></svg> macOS</div><p>macOS 12 and up, one universal build for Apple Silicon and Intel. Not notarised yet — right-click → <em>Open</em> the first time.</p><a class="btn btn-primary" data-asset="mac" href="https://github.com/Nicoo01x/Zpace/releases/latest">Download .dmg</a></div>
+      <div class="card" data-reveal><div class="os"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a4 4 0 0 0-4 4v2.2c0 1.2-.6 2-1.3 3S5 13.6 5 15.5c0 .9.2 1.7.5 2.4-.6.3-1.5.9-1.5 1.6 0 .9 1.2 1.2 2.2 1.4.6.6 1.6 1.1 2.8 1.1.7 0 1.3-.2 1.8-.4h2.4c.5.2 1.1.4 1.8.4 1.2 0 2.2-.5 2.8-1.1 1-.2 2.2-.5 2.2-1.4 0-.7-.9-1.3-1.5-1.6.3-.7.5-1.5.5-2.4 0-1.9-1-3.3-1.7-4.3S16 9.4 16 8.2V6a4 4 0 0 0-4-4zm-1.5 4a.8 1 0 1 1 0 2 .8 1 0 0 1 0-2zm3 0a.8 1 0 1 1 0 2 .8 1 0 0 1 0-2zM12 9c.8 0 2 .5 2 1s-1.2 1.5-2 1.5-2-1-2-1.5 1.2-1 2-1z"/></svg> Linux</div><p>Debian and Ubuntu (.deb), Fedora and RHEL (.rpm), or the AppImage that runs anywhere.</p><a class="btn btn-primary" data-asset="deb" href="https://github.com/Nicoo01x/Zpace/releases/latest">Download .deb</a><div class="alt"><a data-asset="rpm" href="https://github.com/Nicoo01x/Zpace/releases/latest">.rpm</a><a data-asset="appimage" href="https://github.com/Nicoo01x/Zpace/releases/latest">.AppImage</a></div></div>
+    </div>
+    <div class="dl-note" data-reveal>Every file is signed for the in-app updater. All releases and checksums: <a href="https://github.com/Nicoo01x/Zpace/releases" style="text-decoration:underline;text-underline-offset:3px">github.com/Nicoo01x/Zpace/releases</a>.</div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#top"><img src="img/tile.png" alt=""> Zpace</a>
+    <a class="author" href="https://github.com/Nicoo01x" target="_blank" rel="noopener"><img src="https://github.com/Nicoo01x.png?size=64" alt="">Made in Argentina by Nicolás Cabanillas</a>
+    <div class="links">
+      <a href="https://github.com/Nicoo01x/Zpace" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/Nicoo01x/zpace-plugins" target="_blank" rel="noopener">Plugins</a>
+      <a href="https://github.com/Nicoo01x/Zpace/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/Nicoo01x/Zpace/issues/new/choose" target="_blank" rel="noopener">Report a bug</a>
+      <a href="https://github.com/Nicoo01x/Zpace/security/policy" target="_blank" rel="noopener">Security</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
+<script>
+(() => {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  /* ---------- downloads: the right file for this machine, from the latest release ---------- */
+  const ua = navigator.userAgent;
+  const os = /Windows/i.test(ua) ? 'windows' : /Mac/i.test(ua) && !/iPhone|iPad/.test(ua) ? 'mac' : /Linux/i.test(ua) && !/Android/i.test(ua) ? 'linux' : null;
+  const osLabel = { windows: 'Download for Windows', mac: 'Download for macOS', linux: 'Download for Linux' }[os] ?? 'Download';
+  $('[data-dl-label]').textContent = osLabel;
+  fetch('https://api.github.com/repos/Nicoo01x/Zpace/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((rel) => {
+      if (!rel) return;
+      const find = (re) => rel.assets.find((a) => re.test(a.name));
+      const map = { windows: find(/setup\.exe$/), mac: find(/\.dmg$/), deb: find(/\.deb$/), rpm: find(/\.rpm$/), appimage: find(/\.AppImage$/) };
+      for (const [k, a] of Object.entries(map)) if (a) $$(`[data-asset="${k}"]`).forEach((el) => (el.href = a.browser_download_url));
+      const mine = map[os === 'linux' ? 'deb' : os];
+      if (mine) { $('[data-dl-hero]').href = mine.browser_download_url; $('[data-dl-nav]').href = mine.browser_download_url; }
+      const mb = mine ? ` · ${(mine.size / 1048576).toFixed(0)} MB` : '';
+      $('[data-release-line]').textContent = `${rel.tag_name.replace(/^v/, 'v')}${mb} · signed installers on GitHub releases · nothing leaves your machine`;
+    })
+    .catch(() => {});
+
+  /* ---------- nav ---------- */
+  const nav = $('#nav');
+  const onScroll = () => nav.classList.toggle('solid', (window.scrollY || 0) > 24);
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  /* ---------- split headings into masked words ---------- */
+  $$('[data-split]').forEach((h) => {
+    const words = h.textContent.trim().split(/\s+/);
+    h.innerHTML = words.map((w) => `<span class="w"><span>${w}</span></span>`).join(' ');
+  });
+
+  if (reduced || !window.gsap) {
+    // no motion: everything visible, the steps just highlight on scroll
+    $$('.step').forEach((s) => s.classList.add('active'));
+    return;
+  }
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  /* ---------- smooth scroll (Lenis) driving ScrollTrigger ---------- */
+  let lenis = null;
+  if (window.Lenis && matchMedia('(pointer: fine)').matches) {
+    lenis = new Lenis({ lerp: 0.11, wheelMultiplier: 1, smoothWheel: true });
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add((t) => lenis.raf(t * 1000));
+    gsap.ticker.lagSmoothing(0);
+    $$('a[href^="#"]').forEach((a) => a.addEventListener('click', (e) => { const t = $(a.getAttribute('href')); if (!t) return; e.preventDefault(); lenis.scrollTo(t, { offset: -70, duration: 1.4 }); }));
+  }
+
+  /* ---------- hero: words rise, the window flattens as you scroll, chips float ---------- */
+  gsap.set('.w > span', { yPercent: 110 });
+  const intro = gsap.timeline({ defaults: { ease: 'power4.out' } });
+  intro.to('.hero .w > span', { yPercent: 0, duration: 1.1, stagger: 0.07 }, 0.1)
+    .from('.hero [data-reveal]', { y: 24, opacity: 0, duration: 0.9, stagger: 0.08 }, 0.35)
+    .from('#window', { rotateX: 22, y: 120, scale: 0.9, opacity: 0, duration: 1.4, ease: 'power3.out' }, 0.5)
+    .from('.float', { y: 40, opacity: 0, scale: 0.9, duration: 0.8, stagger: 0.08 }, 1.1);
+  $$('.hero [data-reveal]').forEach((el) => el.setAttribute('data-done', ''));
+
+  gsap.fromTo('#window', { rotateX: 12, scale: 0.96 }, { rotateX: 0, scale: 1, immediateRender: false, ease: 'none', scrollTrigger: { trigger: '#stage', start: 'top 85%', end: 'top 25%', scrub: 0.6 } });
+  $$('.float').forEach((f) => gsap.to(f, { y: () => -80 * parseFloat(f.dataset.speed), ease: 'none', scrollTrigger: { trigger: '#stage', start: 'top bottom', end: 'bottom top', scrub: true } }));
+  gsap.to('.hero-glow', { y: 200, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
+
+  /* ---------- generic reveals ---------- */
+  $$('[data-reveal]:not([data-done])').forEach((el) => gsap.from(el, { y: 36, opacity: 0, duration: 1, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true } }));
+  $$('[data-split]').forEach((h) => { if (h.closest('.hero')) return; gsap.to($$('.w > span', h), { yPercent: 0, duration: 1, stagger: 0.06, ease: 'power4.out', scrollTrigger: { trigger: h, start: 'top 85%', once: true } }); });
+
+  /* ---------- marquee: a pinned band whose words are dragged by the scroll ---------- */
+  const track = $('#track');
+  gsap.to(track, { x: () => -(track.scrollWidth - innerWidth + innerWidth * 0.08), ease: 'none', scrollTrigger: { trigger: '#marquee', start: 'top top', end: () => '+=' + track.scrollWidth * 0.45, pin: true, scrub: 0.8, invalidateOnRefresh: true } });
+
+  /* ---------- pinned feature stack ---------- */
+  const shots = $$('#shots img');
+  const steps = $$('.step');
+  const show = (k) => { shots.forEach((s) => s.classList.toggle('on', s.dataset.shot === k)); steps.forEach((s) => s.classList.toggle('active', s.dataset.shot === k)); };
+  steps.forEach((s) => ScrollTrigger.create({ trigger: s, start: 'top 55%', end: 'bottom 55%', onEnter: () => show(s.dataset.shot), onEnterBack: () => show(s.dataset.shot) }));
+
+  /* ---------- the island: one scrubbed timeline ---------- */
+  const box = $('#isl-box'), cardC = $('#card-claude'), cardM = $('#card-music'), chipT = $('#chip-timer'), chipM = $('#chip-music');
+  const W = { pill: 96, timer: 176, both: 372 };
+  const isl = gsap.timeline({ defaults: { ease: 'power3.inOut', duration: 1 } });
+  isl.addLabel('a')
+    .to(box, { width: 360, height: 122 })
+    .to(cardC, { opacity: 1, y: 0, duration: 0.6 }, '<0.3')
+    .to({}, { duration: 1.2 })
+    .to(cardC, { opacity: 0, duration: 0.4 })
+    .to(box, { width: W.timer, height: 30 }, '<0.1')
+    .to(chipT, { opacity: 1, duration: 0.5 }, '<0.5')
+    .addLabel('b')
+    .to({}, { duration: 0.8 })
+    .to(box, { width: W.both })
+    .to(chipM, { opacity: 1, duration: 0.5 }, '<0.5')
+    .to({}, { duration: 0.8 })
+    .addLabel('c')
+    .to(box, { width: 372, height: 130 })
+    .to(cardM, { opacity: 1, duration: 0.6 }, '<0.3')
+    .to({}, { duration: 1.4 })
+    .to(cardM, { opacity: 0, duration: 0.4 })
+    .to(box, { height: 30 }, '<0.1')
+    .to({}, { duration: 0.6 });
+  gsap.set([cardC, cardM], { y: 6 });
+  const copies = $$('#island-copy div');
+  ScrollTrigger.create({
+    trigger: '#island-scene', start: 'top top', end: '+=2600', pin: true, scrub: 0.9, animation: isl,
+    onUpdate: (st) => { const p = st.progress; const k = p < 0.36 ? 0 : p < 0.62 ? 1 : 2; copies.forEach((c) => c.classList.toggle('on', +c.dataset.k === k)); },
+  });
+
+  /* ---------- cards tilt toward the pointer ---------- */
+  if (matchMedia('(pointer: fine)').matches) $$('[data-tilt]').forEach((card) => {
+    const qx = gsap.quickTo(card, 'rotationY', { duration: 0.5, ease: 'power3' }), qy = gsap.quickTo(card, 'rotationX', { duration: 0.5, ease: 'power3' });
+    gsap.set(card, { transformPerspective: 900 });
+    card.addEventListener('pointermove', (e) => { const r = card.getBoundingClientRect(); qx(((e.clientX - r.left) / r.width - 0.5) * 8); qy(-((e.clientY - r.top) / r.height - 0.5) * 8); });
+    card.addEventListener('pointerleave', () => { qx(0); qy(0); });
+  });
+
+  /* ---------- plugins grid: staggered pop ---------- */
+  gsap.from('#plugins-grid .plug', { y: 30, opacity: 0, scale: 0.96, duration: 0.8, stagger: { each: 0.06, from: 'start' }, ease: 'power3.out', scrollTrigger: { trigger: '#plugins-grid', start: 'top 85%', once: true } });
+
+  /* ---------- stamps: slammed in, scrubbed ---------- */
+  const stamps = $$('[data-stamp]');
+  gsap.set(stamps, { scale: 2.6, opacity: 0, rotation: () => gsap.utils.random(-8, 8) });
+  gsap.to(stamps, { scale: 1, opacity: 1, rotation: 0, ease: 'expo.out', stagger: 0.18, duration: 1, scrollTrigger: { trigger: '#free', start: 'top 60%', once: true } });
+
+  $$('.dark').forEach((d) => ScrollTrigger.create({ trigger: d, start: 'top 64px', end: 'bottom 64px', onToggle: (st) => nav.classList.toggle('on-dark', st.isActive) }));
+
+  addEventListener('load', () => ScrollTrigger.refresh());
+})();
+</script>
+</body>
+</html>
