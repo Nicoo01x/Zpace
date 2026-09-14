@@ -1,7 +1,7 @@
 import { usePlugins, type InstalledPlugin } from '@/stores/plugins';
 import { useAgents, EMPTY_AGENT } from '@/stores/agents';
 import { useAutomations } from '@/stores/automations';
-import { appDataDir, createDir, pathExists, trashPath, writeTextFile } from '@/native/system';
+import { appDataDir, createDir, pathExists, trashPath, writeTextFile, joinPath } from '@/native/system';
 import { homeDir } from '@/features/mcp/mcp-config';
 import { isTauri } from '@/lib/platform';
 import { toast } from '@/features/notifications/toast-store';
@@ -69,7 +69,7 @@ export async function install(entry: RegistryEntry): Promise<void> {
   try {
     const previous = store.installed[entry.id];
     if (previous) await takeBack(previous);
-    const dir = `${await appDataDir()}\\plugins\\${entry.id}`;
+    const dir = joinPath(await appDataDir(), `plugins/${entry.id}`);
     await ensureDir(dir);
     // the manifest first — the registry copy may be older than the folder's own
     const manifestText = await fetchText(`${entry.path}/plugin.json`);
@@ -77,12 +77,12 @@ export async function install(entry: RegistryEntry): Promise<void> {
     const problems = validateManifest(manifest);
     if (problems.length) throw new Error(problems[0]);
     if (manifest.id !== entry.id) throw new Error('manifest id mismatch');
-    await writeTextFile(`${dir}\\plugin.json`, manifestText);
+    await writeTextFile(joinPath(dir, 'plugin.json'), manifestText);
     for (const file of entry.files) {
       if (file === 'plugin.json' || !TEXT_EXTENSIONS.test(file) || file.includes('..')) continue;
       const text = await fetchText(`${entry.path}/${file}`);
-      const target = `${dir}\\${file.replace(/\//g, '\\')}`;
-      const parent = target.slice(0, target.lastIndexOf('\\'));
+      const target = joinPath(dir, file);
+      const parent = target.slice(0, Math.max(target.lastIndexOf('\\'), target.lastIndexOf('/')));
       await ensureDir(parent);
       await writeTextFile(target, text);
     }
@@ -133,9 +133,9 @@ async function applyContributions(m: PluginManifest, dir: string): Promise<Insta
   for (const sk of m.contributes?.skills ?? []) {
     // copy the skill's folder to ~/.claude/skills/<name>
     const home = await homeDir();
-    const target = `${home}\\.claude\\skills\\${sk.name}`;
+    const target = joinPath(home, `.claude/skills/${sk.name}`);
     await ensureDir(target);
-    const src = `${dir}\\${sk.path.replace(/\//g, '\\')}`;
+    const src = joinPath(dir, sk.path);
     await copyTree(src, target);
     created.skills.push(target);
   }
@@ -147,8 +147,8 @@ async function copyTree(src: string, dst: string) {
   const { listDir, readTextFile } = await import('@/native/system');
   const entries = await listDir(src).catch(() => []);
   for (const e of entries) {
-    const from = `${src}\\${e.name}`;
-    const to = `${dst}\\${e.name}`;
+    const from = joinPath(src, e.name);
+    const to = joinPath(dst, e.name);
     if (e.isDir) {
       await ensureDir(to);
       await copyTree(from, to);

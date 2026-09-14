@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Puzzle } from 'lucide-react';
 import { usePlugins } from '@/stores/plugins';
 import { useSettings } from '@/stores/settings';
-import { readTextFile } from '@/native/system';
+import { readTextFile, joinPath } from '@/native/system';
 import { Spinner } from '@/components/ui/Spinner';
 import { t } from '@/i18n';
 import { apiFor, htmlPanes, paneMessage, paneWindows, pluginCommands, type PluginEvent, type ZpaceApi } from './runtime';
@@ -70,7 +70,7 @@ export function PluginPane({ pluginId, paneId }: { pluginId: string; paneId: str
   useEffect(() => {
     if (adhoc || !plugin || !spec) return;
     let cancelled = false;
-    readTextFile(`${plugin.dir}\\${spec.entry.replace(/\//g, '\\')}`)
+    readTextFile(joinPath(plugin.dir, spec.entry))
       .then((text) => !cancelled && setHtml(text))
       .catch((e) => !cancelled && setError(e instanceof Error ? e.message : String(e)));
     return () => {

@@ -6,7 +6,7 @@ import { useCapabilities, type AssetInfo } from '@/stores/capabilities';
 import { modelContext } from '@/stores/settings';
 import { runtime } from '@/providers/runtime';
 import { loadMcpEntries } from '@/features/mcp/mcp-config';
-import { appDataDir, copyFile } from '@/native/system';
+import { appDataDir, copyFile, joinPath } from '@/native/system';
 import type { SessionOptions } from '@/types/workspace';
 import { t } from '@/i18n';
 
@@ -89,7 +89,7 @@ const TEXT = /\.(md|txt|json|ya?ml|csv|toml|xml|html?|css|[jt]sx?|py|rs|go|java|
 
 /** Where an agent keeps its files: `<app data>/agents/<id>/`. */
 export async function agentDir(agentId: string): Promise<string> {
-  return `${await appDataDir()}\\agents\\${agentId}`;
+  return joinPath(await appDataDir(), `agents/${agentId}`);
 }
 
 /** Copy files into the agent's folder; a name that is already there gets a suffix. Returns the entries to add. */
@@ -102,7 +102,7 @@ export async function importAgentFiles(agentId: string, paths: string[]): Promis
     let name = base;
     for (let i = 2; existing.has(name.toLowerCase()); i++) name = base.replace(/(\.[^.]*)?$/, ` ${i}$1`);
     existing.add(name.toLowerCase());
-    const target = `${dir}\\${name}`;
+    const target = joinPath(dir, name);
     const size = await copyFile(src, target);
     out.push({ name, path: target, kind: IMAGE.test(name) ? 'image' : TEXT.test(name) ? 'text' : 'file', size, addedAt: Date.now() });
   }

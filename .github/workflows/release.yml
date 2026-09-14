@@ -1,6 +1,7 @@
-# Builds signed installers on a tag (v1.2.3) and publishes a GitHub release with the
-# updater manifest (latest.json) the app checks at launch. Needs two repository
-# secrets: TAURI_SIGNING_PRIVATE_KEY (the contents of ~/.tauri/zorynq.key) and
+# Builds signed installers on a tag (v1.2.3) — Windows (NSIS), macOS (universal .dmg), Linux
+# (.deb, .rpm, .AppImage) — and publishes a GitHub release with the updater manifest
+# (latest.json) the app checks at launch. Needs two repository secrets:
+# TAURI_SIGNING_PRIVATE_KEY (the contents of ~/.tauri/zorynq.key) and
 # TAURI_SIGNING_PRIVATE_KEY_PASSWORD (empty if the key has none).
 name: release
 
@@ -19,9 +20,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            args: ''
+            args: '--bundles nsis'
           - os: macos-latest
             args: '--target universal-apple-darwin'
+          - os: ubuntu-22.04
+            args: ''
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +38,11 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+      - name: Linux packages the webview needs
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev libxdo-dev libssl-dev
       - run: npm ci
       - uses: tauri-apps/tauri-action@v0
         env:

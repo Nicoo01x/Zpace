@@ -1,0 +1,26 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Zpace",
+        "width": 1360,
+        "height": 880,
+        "minWidth": 880,
+        "minHeight": 560,
+        "center": true,
+        "resizable": true,
+        "shadow": false,
+        "dragDropEnabled": true,
+        "theme": null,
+        "decorations": false
+      }
+    ]
+  },
+  "bundle": {
+    "linux": {
+      "deb": { "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0", "libayatana-appindicator3-1"] },
+      "appimage": { "bundleMediaFramework": true }
+    }
+  }
+}

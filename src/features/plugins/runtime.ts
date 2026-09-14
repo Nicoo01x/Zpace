@@ -11,7 +11,7 @@ import { useQueue } from '@/stores/queue';
 import { useEnvironment } from '@/stores/environment';
 import { runtime as agents } from '@/providers/runtime';
 import { processSpawn, onProcessLine, onProcessExit } from '@/native/process';
-import { openUrl, pathExists, readTextFile, writeTextFile } from '@/native/system';
+import { openUrl, pathExists, readTextFile, writeTextFile, joinPath } from '@/native/system';
 import { mediaControl, mediaNow, type MediaNow } from '@/native/media';
 import { useNotes } from '@/stores/notes';
 import { useIslandChips, type IslandChip } from '@/features/island/chips';
@@ -138,7 +138,7 @@ export async function activate(p: InstalledPlugin): Promise<void> {
   bump();
   if (!p.manifest.main) return;
   try {
-    const code = await readTextFile(`${p.dir}\\${p.manifest.main.replace(/\//g, '\\')}`);
+    const code = await readTextFile(joinPath(p.dir, p.manifest.main));
     const url = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
     entry.disposables.push(() => URL.revokeObjectURL(url));
     const mod = (await import(/* @vite-ignore */ url)) as { activate?: (api: ZpaceApi) => unknown; default?: (api: ZpaceApi) => unknown };

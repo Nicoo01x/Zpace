@@ -1,4 +1,5 @@
 import { useArena, type Arena, type ArenaVariant } from '@/stores/arena';
+import { joinPath } from '@/native/system';
 import { useProjects } from '@/stores/projects';
 import { useSessions } from '@/stores/sessions';
 import { useSettings, modelContext } from '@/stores/settings';
@@ -102,7 +103,7 @@ export async function launchArena(input: LaunchInput): Promise<Arena | undefined
     const spec = input.variants[i];
     const n = i + 1;
     const branch = `arena/${stem}-v${n}`;
-    const dir = `${parent}\\${name}.worktrees\\arena-${stem}-v${n}`;
+    const dir = joinPath(parent, `${name}.worktrees/arena-${stem}-v${n}`);
     try {
       await git.worktreeAdd(project.path, dir, branch, head.sha);
     } catch (e) {

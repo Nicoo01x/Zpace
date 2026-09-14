@@ -5,7 +5,7 @@ import { useProjects } from '@/stores/projects';
 import { useSessions } from '@/stores/sessions';
 import { useUI } from '@/stores/ui';
 import { useCapabilities } from '@/stores/capabilities';
-import { readTextFile, writeTextFile, pathExists, openUrl } from '@/native/system';
+import { readTextFile, writeTextFile, pathExists, openUrl, joinPath } from '@/native/system';
 import { loadMcpEntries, transport, type McpConfig, type McpEntry as Entry } from './mcp-config';
 import { isTauri } from '@/lib/platform';
 import { Button } from '@/components/ui/Button';
@@ -67,7 +67,7 @@ export function McpSection() {
 
   const removeProjectServer = async (name: string) => {
     if (!project) return;
-    const file = `${project.path.replace(/[\\/]+$/, '')}\\.mcp.json`;
+    const file = joinPath(project.path, '.mcp.json');
     try {
       const cfg = JSON.parse(await readTextFile(file)) as { mcpServers?: Record<string, McpConfig> };
       delete cfg.mcpServers?.[name];
@@ -80,7 +80,7 @@ export function McpSection() {
   };
 
   const groups: Array<{ scope: Entry['scope']; title: string; hint: string }> = [
-    { scope: 'project', title: t('Project'), hint: project ? `${project.path}\\.mcp.json` : '' },
+    { scope: 'project', title: t('Project'), hint: project ? joinPath(project.path, '.mcp.json') : '' },
     { scope: 'local', title: t('This project, locally'), hint: t('~/.claude.json › projects') },
     { scope: 'user', title: t('User'), hint: t('~/.claude.json') },
   ];
@@ -172,7 +172,7 @@ function AddForm({ projectPath, onDone }: { projectPath: string; onDone: () => v
   const valid = name.trim() && (kind === 'stdio' ? command.trim() : /^https?:\/\//.test(url));
   const save = async () => {
     if (!valid) return;
-    const file = `${projectPath.replace(/[\\/]+$/, '')}\\.mcp.json`;
+    const file = joinPath(projectPath, '.mcp.json');
     let cfg: { mcpServers?: Record<string, McpConfig> } = {};
     if (await pathExists(file)) {
       try {

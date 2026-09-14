@@ -1,4 +1,4 @@
-import { readTextFile, pathExists } from '@/native/system';
+import { readTextFile, pathExists, joinPath } from '@/native/system';
 import { isTauri } from '@/lib/platform';
 
 /**
@@ -29,13 +29,13 @@ export async function loadMcpEntries(projectPath?: string): Promise<McpEntry[]> 
   const out: McpEntry[] = [];
   if (!isTauri) return out;
   const home = await homeDir();
-  const userFile = `${home}\\.claude.json`;
+  const userFile = joinPath(home, '.claude.json');
   if (await pathExists(userFile)) {
     try {
       const cfg = JSON.parse(await readTextFile(userFile)) as { mcpServers?: Record<string, McpConfig>; projects?: Record<string, { mcpServers?: Record<string, McpConfig> }> };
       for (const [name, config] of Object.entries(cfg.mcpServers ?? {})) out.push({ name, scope: 'user', config });
       if (projectPath) {
-        const norm = (x: string) => x.replace(/\//g, '\\').replace(/[\\]+$/, '').toLowerCase();
+        const norm = (x: string) => x.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
         const local = Object.entries(cfg.projects ?? {}).find(([k]) => norm(k) === norm(projectPath))?.[1];
         for (const [name, config] of Object.entries(local?.mcpServers ?? {})) out.push({ name, scope: 'local', config });
       }
@@ -44,7 +44,7 @@ export async function loadMcpEntries(projectPath?: string): Promise<McpEntry[]> 
     }
   }
   if (projectPath) {
-    const file = `${projectPath.replace(/[\\/]+$/, '')}\\.mcp.json`;
+    const file = joinPath(projectPath, '.mcp.json');
     if (await pathExists(file)) {
       try {
         const cfg = JSON.parse(await readTextFile(file)) as { mcpServers?: Record<string, McpConfig> };

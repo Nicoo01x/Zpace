@@ -7,7 +7,7 @@ import { useBrowserMemory } from '@/stores/browser-memory';
 import { useTerminals } from '@/stores/terminals';
 import { useNotes, projectBoard } from '@/stores/notes';
 import { useEnvironment } from '@/stores/environment';
-import { pickFolder, gitSummary, pathExists } from '@/native/system';
+import { pickFolder, gitSummary, pathExists, joinPath } from '@/native/system';
 import { git } from '@/native/git';
 import { toast } from '@/features/notifications/toast-store';
 import { runtime } from '@/providers/runtime';
@@ -201,9 +201,9 @@ export function useWorkspaceActions() {
       if (!safe) return undefined;
       const root = project.path.replace(/[\\/]+$/, '');
       const parent = root.slice(0, Math.max(root.lastIndexOf('\\'), root.lastIndexOf('/')));
-      const dest = `${parent}\\${basename(root)}.worktrees\\${safe}`;
+      const dest = joinPath(parent, `${basename(root)}.worktrees/${safe}`);
       try {
-        const existing = (await git.worktrees(project.path)).find((w) => w.path.replace(/\//g, '\\').toLowerCase() === dest.toLowerCase());
+        const existing = (await git.worktrees(project.path)).find((w) => w.path.replace(/\\/g, '/').toLowerCase() === dest.replace(/\\/g, '/').toLowerCase());
         if (!existing) await git.worktreeAdd(project.path, dest, branch, baseRef);
       } catch (e) {
         toast.error(t('Could not create the worktree'), { description: e instanceof Error ? e.message : String(e) });

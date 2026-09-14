@@ -1,4 +1,5 @@
 import { invoke, listen, isTauri } from '@/native/bridge';
+import { joinPath } from '@/native/system';
 import { processSpawn, onProcessLine, onProcessExit } from '@/native/process';
 import { useAutomations, type Automation } from '@/stores/automations';
 import { useProjects } from '@/stores/projects';
@@ -32,7 +33,7 @@ function absolute(a: Automation): string | null {
   const p = a.trigger.path.trim();
   if (!p || p === '.') return project.path;
   if (/^[a-zA-Z]:[\\/]|^\//.test(p)) return p;
-  return `${project.path.replace(/[\\/]+$/, '')}\\${p.replace(/^[\\/]+/, '')}`;
+  return joinPath(project.path, p);
 }
 
 function sessionFor(a: Automation): string | null {
