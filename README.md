@@ -22,6 +22,7 @@
   <a href="https://github.com/Nicoo01x/Zpace/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/Nicoo01x/Zpace/total?style=flat-square&color=1d1d1f"></a>
   <a href="https://github.com/Nicoo01x/Zpace/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Nicoo01x/Zpace/build.yml?style=flat-square&label=windows%20%C2%B7%20macos%20%C2%B7%20linux"></a>
   <img alt="Free forever" src="https://img.shields.io/badge/free-forever-2e9e5b?style=flat-square">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-6e6e73?style=flat-square"></a>
 </p>
 
 <p align="center">
@@ -88,3 +89,5 @@ Issues and pull requests are welcome — read [CONTRIBUTING.md](CONTRIBUTING.md)
 
 <a href="https://github.com/Nicoo01x"><img src="https://github.com/Nicoo01x.png?size=64" width="32" align="left" alt=""></a>
 **Nicolás Cabanillas** — [@Nicoo01x](https://github.com/Nicoo01x), Argentina. If Zpace is useful to you, a star helps other people find it.
+
+MIT licensed — see [LICENSE](LICENSE).
