@@ -4,7 +4,7 @@ A premium, 100% local desktop workspace: real terminals (PowerShell, Git Bash, W
 
 Built with Tauri 2 · React 19 · TypeScript · Vite · Tailwind 4 · Motion · Radix · xterm.js · Monaco · Zustand · SQLite/Drizzle.
 
-**Download:** Windows, macOS and Linux installers are on [zpace-releases](https://github.com/Nicoo01x/zpace-releases/releases/latest). Free, forever. Plugins: [zpace-plugins](https://github.com/Nicoo01x/zpace-plugins).
+**Download:** Windows, macOS and Linux installers are on the [latest release](https://github.com/Nicoo01x/Zpace/releases/latest). Free, forever. Plugins: [zpace-plugins](https://github.com/Nicoo01x/zpace-plugins).
 
 ```
 ┌───────────────────────────────────────────────────────────────┐

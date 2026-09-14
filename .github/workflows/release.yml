@@ -1,9 +1,9 @@
 # Builds signed installers on a tag (v1.2.3) — Windows (NSIS), macOS (universal .dmg), Linux
-# (.deb, .rpm, .AppImage) — and publishes them as a GitHub release on the public downloads repo
-# (Nicoo01x/zpace-releases) with the updater manifest (latest.json) the app checks at launch.
-# Repository secrets: TAURI_SIGNING_PRIVATE_KEY (the contents of ~/.tauri/zorynq.key),
-# TAURI_SIGNING_PRIVATE_KEY_PASSWORD (empty if the key has none) and RELEASE_TOKEN (a token that
-# can write releases on zpace-releases — this repo is private, so GITHUB_TOKEN cannot).
+# (.deb, .rpm, .AppImage) — and publishes them on this repo's GitHub release for the tag, with
+# the updater manifest (latest.json) the app checks at launch. Create the release with its notes
+# before pushing the tag (gh release create vX.Y.Z --notes-file …) and the assets land in it.
+# Repository secrets: TAURI_SIGNING_PRIVATE_KEY (the contents of ~/.tauri/zorynq.key) and
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD (empty if the key has none).
 name: release
 
 on:
@@ -47,12 +47,10 @@ jobs:
       - run: npm ci
       - uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          owner: Nicoo01x
-          repo: zpace-releases
           tagName: ${{ github.ref_name }}
           releaseName: 'Zpace ${{ github.ref_name }}'
           releaseBody: 'See the commits since the previous tag.'
