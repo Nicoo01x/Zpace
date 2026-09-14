@@ -26,7 +26,7 @@ import { uid } from '@/lib/id';
 import { pickFiles, pickFolder } from '@/native/system';
 import { basename } from '@/lib/format';
 import { springs, easings } from '@/lib/motion';
-import { isTauri } from '@/lib/platform';
+import { isTauri, isWindows } from '@/lib/platform';
 import { toast } from '@/features/notifications/toast-store';
 import { cyclePermissionMode } from './permissionMode';
 import { useTerminals } from '@/stores/terminals';
@@ -119,7 +119,7 @@ export const Composer = memo(function Composer({ sessionId, focused }: { session
   const [listening, setListening] = useState(false);
   /** Dictate: one utterance through Windows' recognizer, dropped at the caret. */
   const dictate = useCallback(async () => {
-    if (listening) return;
+    if (listening || !isWindows) return;
     setListening(true);
     try {
       const text = (await speechRecognize(speechLang(language))).trim();
@@ -692,7 +692,8 @@ export const Composer = memo(function Composer({ sessionId, focused }: { session
               </button>
             </Tooltip>
           ) : null}
-          {isTauri ? (
+          {/* dictation rides on Windows' recognizer; the button only shows where it works */}
+          {isTauri && isWindows ? (
             <Tooltip content={listening ? t('Listening…') : t('Dictate')} shortcut="mod+shift+m" side="top">
               <button type="button" aria-label={t('Dictate')} aria-pressed={listening} onClick={() => void dictate()} className={cn('inline-flex size-6 items-center justify-center rounded-md transition-colors', listening ? 'bg-danger/12 text-danger' : 'text-muted hover:bg-surface-hover hover:text-primary')}>
                 {listening ? (
