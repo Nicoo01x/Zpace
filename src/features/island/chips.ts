@@ -7,7 +7,7 @@ import { create } from 'zustand';
  */
 export interface IslandChip {
   text: string;
-  /** A short mark before the text (an emoji or a single glyph). */
+  /** A short mark before the text: a single glyph, or an inline `<svg …>` (drawn at 12 px in the chip's colour — a real icon, not an emoji). */
   icon?: string;
   title?: string;
   /** Tint for the icon/text (a CSS colour); default white. */

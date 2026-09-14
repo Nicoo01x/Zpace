@@ -340,7 +340,7 @@ function Compact({ unread, onClick }: { unread: number; onClick: () => void }) {
             style={{ color: chip.color ?? 'rgba(255,255,255,0.85)' }}
           >
             <span className="mr-2 h-3 w-px bg-white/20" />
-            {chip.icon ? <span className="mr-1.5 inline-flex text-[11px]">{chip.icon}</span> : null}
+            {chip.icon ? chip.icon.trimStart().startsWith('<svg') ? <span aria-hidden className="mr-1.5 inline-flex [&>svg]:size-3 [&>svg]:shrink-0" dangerouslySetInnerHTML={{ __html: chip.icon }} /> : <span className="mr-1.5 inline-flex text-[11px]">{chip.icon}</span> : null}
             <span className="max-w-[240px] truncate">{chip.text}</span>
           </motion.button>
         ))}
