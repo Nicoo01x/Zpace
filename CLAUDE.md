@@ -24,6 +24,7 @@ There is no Prettier. Files are formatted by hand at a wide print width (~300 co
 - Never commit `node_modules`, `dist`, `src-tauri/target`, `src-tauri/gen`, logs, `.env*`, keys.
 - Personal data stays out of the code, the docs and the screenshots: no real user names, machine names, absolute `C:\Users\…` paths, private sessions.
 - `README.md` is the product's story; `CLAUDE.md` (this file) is for whoever works on the code with Claude.
+- `site/` is the landing page (https://nicoo01x.github.io/Zpace/): one static `index.html` with inline CSS/JS, GSAP + ScrollTrigger + Lenis from CDNs, screenshots in `site/img` (demo data only — the Express repo, user "Alex"; crop or patch anything else). `.github/workflows/pages.yml` deploys it on every push that touches `site/`. Test it with a local static server and Playwright screenshots at 1440 and 390 before pushing.
 
 ## Code conventions
 
