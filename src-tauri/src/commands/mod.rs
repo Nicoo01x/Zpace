@@ -10,6 +10,7 @@ pub mod speech;
 pub mod watch;
 pub mod system;
 pub mod media;
+pub mod taskbar;
 
 use std::process::Command;
 

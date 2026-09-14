@@ -42,6 +42,7 @@ pub fn run() {
             // The name the OS shows (taskbar, Alt+Tab, notifications) — whatever a platform config override left it at.
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.set_title("Zpace");
+                commands::taskbar::set_taskbar_icon(&w);
             }
             // The tray: the Z in the notification area — left click brings the window back (close-to-tray hides
             // it), the menu shows or quits. Built here so the icon is the app's own.
