@@ -1,6 +1,6 @@
 [package]
 name = "zpace"
-version = "0.1.0"
+version = "0.1.1"
 description = "A desktop workspace for Claude Code and other CLI agents."
 authors = ["Zpace"]
 edition = "2021"
