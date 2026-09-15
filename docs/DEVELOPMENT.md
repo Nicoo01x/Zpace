@@ -1,6 +1,6 @@
 # Working on Zpace
 
-How to run it, how it is built, how Claude Code is driven, and the keyboard. The conventions for code, design and motion are at the end.
+How to run it, how it is built, how Claude Code is driven, and the keyboard. The conventions for code, design and motion are at the end; the design system itself — tokens, type, surfaces, the motion primitives, the island, the mascot — is in [DESIGN.md](DESIGN.md).
 
 ## Running it
 

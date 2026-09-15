@@ -14,6 +14,7 @@
   <a href="https://github.com/Nicoo01x/Zpace/releases/latest">Download</a> ·
   <a href="https://github.com/Nicoo01x/zpace-plugins">Plugins</a> ·
   <a href="docs/FEATURES.md">Every feature</a> ·
+  <a href="docs/DESIGN.md">Design system</a> ·
   <a href="docs/DEVELOPMENT.md">Development</a>
 </p>
 
