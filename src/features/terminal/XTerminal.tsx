@@ -164,7 +164,41 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
     term.loadAddon(new WebLinksAddon((_e, uri) => void openUrl(uri)));
     // Ctrl+F finds in this terminal; application shortcuts (palette, new terminal, …) are handled by the
     // window listener and must not also reach the shell as control characters.
+    // Windows Terminal's rule: Ctrl+C with a selection copies it (and sends nothing to the shell); with nothing
+    // selected it is the interrupt. Ctrl+Shift+C / Ctrl+Insert always copy, Ctrl+Shift+V / Shift+Insert paste.
+    const copySelection = () => {
+      const sel = term.getSelection();
+      if (!sel) return false;
+      void navigator.clipboard?.writeText(sel).catch(() => void 0);
+      term.clearSelection();
+      return true;
+    };
+    const pasteClipboard = () => {
+      void navigator.clipboard
+        ?.readText()
+        .then((text) => text && term.paste(text))
+        .catch(() => void 0);
+    };
     term.attachCustomKeyEventHandler((e) => {
+      if (e.type === 'keydown' && e.ctrlKey && !e.altKey && !e.metaKey) {
+        const key = e.key.toLowerCase();
+        if ((key === 'c' && !e.shiftKey && term.hasSelection()) || (key === 'c' && e.shiftKey) || (key === 'insert' && !e.shiftKey)) {
+          if (copySelection()) {
+            e.preventDefault();
+            return false;
+          }
+        }
+        if (key === 'v' && e.shiftKey) {
+          e.preventDefault();
+          pasteClipboard();
+          return false;
+        }
+      }
+      if (e.type === 'keydown' && e.key === 'Insert' && e.shiftKey && !e.ctrlKey) {
+        e.preventDefault();
+        pasteClipboard();
+        return false;
+      }
       if (matchesShortcut(e, 'mod+f')) {
         if (e.type === 'keydown') {
           e.preventDefault();
