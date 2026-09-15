@@ -1433,4 +1433,6 @@ export const ja: Record<string, string> = {
   'Switch on': 'オンにする',
   'Manage plugins…': 'プラグインを管理…',
   'Nothing installed yet.': 'まだ何もインストールされていません。',
+  'Text weight': '文字の太さ',
+  'Heavier text everywhere — labels, rows, titles.': 'ラベル、行、タイトルなど、すべての文字を太くします。',
 };

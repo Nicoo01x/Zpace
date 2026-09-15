@@ -1433,4 +1433,6 @@ export const ko: Record<string, string> = {
   'Switch on': '켜기',
   'Manage plugins…': '플러그인 관리…',
   'Nothing installed yet.': '아직 설치된 것이 없습니다.',
+  'Text weight': '글자 굵기',
+  'Heavier text everywhere — labels, rows, titles.': '레이블, 행, 제목 등 모든 글자를 더 굵게 합니다.',
 };

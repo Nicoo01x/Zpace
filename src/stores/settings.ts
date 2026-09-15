@@ -7,6 +7,8 @@ import { DEFAULT_MONO, DEFAULT_SANS } from '@/lib/fonts';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type Density = 'compact' | 'default' | 'comfortable';
+/** How heavy the interface text is: every weight in the UI shifts up one or two steps. */
+export type TextWeight = 'regular' | 'medium' | 'bold';
 export type NotificationSurface = 'both' | 'island' | 'toasts';
 export type ToastPosition = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
 
@@ -52,6 +54,7 @@ export interface SettingsState {
   font: string;
   monoFont: string;
   fontSize: number;
+  textWeight: TextWeight;
   monoSize: number;
   density: Density;
   reducedMotion: 'system' | 'on' | 'off';
@@ -177,6 +180,7 @@ const defaults: Omit<SettingsState, 'set' | 'patch' | 'setColor' | 'resetColors'
   font: DEFAULT_SANS,
   monoFont: DEFAULT_MONO,
   fontSize: 13.5,
+  textWeight: 'regular',
   monoSize: 13.5,
   density: 'default',
   reducedMotion: 'system',

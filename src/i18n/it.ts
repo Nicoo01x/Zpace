@@ -1433,4 +1433,6 @@ export const it: Record<string, string> = {
   'Switch on': 'Accendi',
   'Manage plugins…': 'Gestisci i plugin…',
   'Nothing installed yet.': 'Ancora niente installato.',
+  'Text weight': 'Peso del testo',
+  'Heavier text everywhere — labels, rows, titles.': 'Testo più pesante ovunque — etichette, righe, titoli.',
 };

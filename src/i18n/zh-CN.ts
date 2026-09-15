@@ -1433,4 +1433,6 @@ export const zhCN: Record<string, string> = {
   'Switch on': '开启',
   'Manage plugins…': '管理插件…',
   'Nothing installed yet.': '还没有安装任何插件。',
+  'Text weight': '文字粗细',
+  'Heavier text everywhere — labels, rows, titles.': '所有文字更粗——标签、行、标题。',
 };

@@ -336,6 +336,18 @@ function Appearance() {
         <Row label={tr('Interface size')}>
           <SegmentedControl size="sm" value={String(s.fontSize)} onChange={(v) => s.set('fontSize', Number(v))} options={['12', '13', '13.5', '14', '15'].map((v) => ({ value: v, label: v }))} />
         </Row>
+        <Row label={tr('Text weight')} hint={tr('Heavier text everywhere — labels, rows, titles.')}>
+          <SegmentedControl
+            size="sm"
+            value={s.textWeight}
+            onChange={(v) => s.set('textWeight', v)}
+            options={[
+              { value: 'regular', label: tr('Regular') },
+              { value: 'medium', label: tr('Medium') },
+              { value: 'bold', label: tr('Bold') },
+            ]}
+          />
+        </Row>
         <FontPicker label={tr('Monospace font')} hint={tr('Transcript, code, notes editor and terminal.')} list={MONO_FONTS} value={s.monoFont} onChange={(v) => s.set('monoFont', v)} sample="● Brewed for 1m 35s · done 10:43 PM  {a: 0}" mono />
         <Row label={tr('Transcript size')}>
           <SegmentedControl size="sm" value={String(s.monoSize)} onChange={(v) => s.set('monoSize', Number(v))} options={['12', '13', '13.5', '14', '15'].map((v) => ({ value: v, label: v }))} />

@@ -99,6 +99,7 @@ export function applyAppearance() {
   const dark = s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   root.classList.toggle('dark', dark);
   root.dataset.density = s.density;
+  root.dataset.weight = s.textWeight;
 
   // Fonts
   root.style.setProperty('--font-sans', resolveFontStack(s.font, false));

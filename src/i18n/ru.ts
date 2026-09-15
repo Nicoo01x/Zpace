@@ -1433,4 +1433,6 @@ export const ru: Record<string, string> = {
   'Switch on': 'Включить',
   'Manage plugins…': 'Управлять плагинами…',
   'Nothing installed yet.': 'Пока ничего не установлено.',
+  'Text weight': 'Насыщенность текста',
+  'Heavier text everywhere — labels, rows, titles.': 'Более жирный текст везде — подписи, строки, заголовки.',
 };

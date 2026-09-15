@@ -1433,4 +1433,6 @@ export const ptBR: Record<string, string> = {
   'Switch on': 'Ligar',
   'Manage plugins…': 'Gerenciar plugins…',
   'Nothing installed yet.': 'Nada instalado ainda.',
+  'Text weight': 'Peso do texto',
+  'Heavier text everywhere — labels, rows, titles.': 'Texto mais pesado em todo lugar — rótulos, linhas, títulos.',
 };

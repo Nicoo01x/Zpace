@@ -184,3 +184,16 @@
   --content-padding: 32px;
   --row-height: 40px;
 }
+
+/* Text weight (Settings › Appearance): every weight utility shifts up a step or two, and plain text
+   starts at 500 / 600. Applied on <html> as data-weight, so it covers Monaco, panes and portals too. */
+[data-weight='medium'] body { font-weight: 500; }
+[data-weight='medium'] :where(.font-normal) { font-weight: 500; }
+[data-weight='medium'] :where(.font-medium) { font-weight: 600; }
+[data-weight='medium'] :where(.font-semibold) { font-weight: 700; }
+[data-weight='medium'] :where(.font-bold) { font-weight: 800; }
+[data-weight='bold'] body { font-weight: 600; }
+[data-weight='bold'] :where(.font-normal) { font-weight: 600; }
+[data-weight='bold'] :where(.font-medium) { font-weight: 700; }
+[data-weight='bold'] :where(.font-semibold) { font-weight: 800; }
+[data-weight='bold'] :where(.font-bold) { font-weight: 900; }
