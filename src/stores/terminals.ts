@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { ptyKill } from '@/native/pty';
 import { persist } from 'zustand/middleware';
 import type { TerminalTab } from '@/types/workspace';
 import { uid } from '@/lib/id';
@@ -38,12 +39,15 @@ export const useTerminals = create<TerminalsState>()(
         set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }));
         return tab;
       },
-      closeTab: (id) =>
+      closeTab: (id) => {
+        const pty = get().tabs.find((t) => t.id === id)?.ptyId;
+        if (pty) void ptyKill(pty);
         set((s) => {
           const tabs = s.tabs.filter((t) => t.id !== id);
           const activeTabId = s.activeTabId === id ? (tabs[tabs.length - 1]?.id ?? null) : s.activeTabId;
           return { tabs, activeTabId };
-        }),
+        });
+      },
       renameTab: (id, title) => set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, title } : t)) })),
       setActive: (id) => set({ activeTabId: id }),
       setPty: (id, ptyId) => {

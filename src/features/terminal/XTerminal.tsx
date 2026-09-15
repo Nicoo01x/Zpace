@@ -11,7 +11,7 @@ import { useSettings } from '@/stores/settings';
 import { useEnvironment, whenEnvironmentReady } from '@/stores/environment';
 import { terminalFontStack } from '@/lib/fonts';
 import { useTerminals } from '@/stores/terminals';
-import { onPtyData, onPtyExit, ptyAvailable, ptyKill, ptyResize, ptySpawn, ptyWrite } from '@/native/pty';
+import { onPtyData, onPtyExit, ptyAlive, ptyAvailable, ptyKill, ptyResize, ptySpawn, ptyWrite } from '@/native/pty';
 import { openUrl } from '@/native/system';
 import type { TerminalTab } from '@/types/workspace';
 import { createPreviewShell } from './previewShell';
@@ -252,10 +252,14 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
     cleanups.push(() => host.removeEventListener('wheel', onWheel));
 
     if (ptyAvailable) {
+      // The tab's process outlives this view: when the pane showed something else for a while, the shell kept
+      // running and we attach to it again (its output replays); only a tab with no living process spawns one.
+      const existing = tab.ptyId && ptyAlive(tab.ptyId) ? tab.ptyId : null;
       // The shell list comes from native detection; a tab restored at startup may mount before it.
       void whenEnvironmentReady()
         .then((env) => {
           if (disposed) throw new Error('disposed');
+          if (existing) return existing;
           const shell = env.shells.find((s) => s.id === tab.shellId) ?? env.shells[0];
           // A tab can run a program directly (Claude Code's TUI) instead of a shell.
           return ptySpawn({
@@ -269,14 +273,16 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
         })
         .then((id) => {
           if (disposed) {
-            void ptyKill(id);
+            if (!existing) void ptyKill(id);
             return;
           }
           ptyId = id;
           setPty(tab.id, id);
           // A startup command for shells (not for Claude Code and friends): typed once the prompt is likely up.
           const startup = useSettings.getState().terminal.startupCommand.trim();
-          if (startup && !tab.program) window.setTimeout(() => void ptyWrite(id, startup + '\r'), 600);
+          if (startup && !tab.program && !existing) window.setTimeout(() => void ptyWrite(id, startup + '\r'), 600);
+          // A full-screen program repaints on a size change: nudge the process after the replay so its screen is whole.
+          if (existing) window.setTimeout(() => void ptyResize(id, term.cols, term.rows + 1).then(() => ptyResize(id, term.cols, term.rows)), 80);
           const startedAt = Date.now();
           let tail = '';
           cleanups.push(
@@ -321,7 +327,7 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
       refitRef.current = null;
       unregister();
       cleanups.forEach((c) => c());
-      if (ptyId) void ptyKill(ptyId);
+      // the process stays: closing the tab is what kills it (stores/terminals)
       term.dispose();
       termRef.current = null;
     };

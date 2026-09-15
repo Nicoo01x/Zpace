@@ -28,38 +28,50 @@ export interface PtyExitPayload {
 const dataHandlers = new Map<string, (data: Uint8Array) => void>();
 const exitHandlers = new Map<string, (code: number | null) => void>();
 /**
- * Output that arrived before the terminal attached its handler. The reader
- * thread starts the moment the process does, and a TUI (Claude Code) paints
- * its first screen faster than `pty_spawn` resolves and the tab wires up —
- * dropping those bytes left the pane blank for good (a full-screen app only
- * repaints on input or resize). Held per id until the handler comes.
+ * Everything a PTY has printed, per id, capped at ~1.5 MB (oldest chunks go
+ * first). A terminal is a view: its pane can show something else for a while
+ * and come back, so the process keeps running and the view replays this when
+ * it attaches. It also covers the first attach — the reader thread starts
+ * the moment the process does, and a TUI (Claude Code) paints its first
+ * screen faster than `pty_spawn` resolves and the tab wires up.
  */
-const pendingData = new Map<string, Uint8Array[]>();
+const history = new Map<string, { chunks: Uint8Array[]; bytes: number }>();
+const HISTORY_BYTES = 1_500_000;
+/** Ids whose process is still running (spawned, not exited, not killed). */
+const alive = new Set<string>();
 const pendingExit = new Map<string, number | null>();
 let listening: Promise<void> | null = null;
+
+function remember(id: string, bytes: Uint8Array) {
+  const h = history.get(id) ?? { chunks: [], bytes: 0 };
+  h.chunks.push(bytes);
+  h.bytes += bytes.length;
+  while (h.bytes > HISTORY_BYTES && h.chunks.length > 1) h.bytes -= h.chunks.shift()!.length;
+  history.set(id, h);
+}
 
 function ensureListeners() {
   if (listening) return listening;
   listening = (async () => {
     await listen<PtyDataPayload>('pty://data', (p) => {
-      const h = dataHandlers.get(p.id);
       const bytes = base64ToBytes(p.data);
-      if (h) h(bytes);
-      else pendingData.set(p.id, [...(pendingData.get(p.id) ?? []), bytes]);
+      remember(p.id, bytes);
+      dataHandlers.get(p.id)?.(bytes);
     });
     await listen<PtyExitPayload>('pty://exit', (p) => {
+      alive.delete(p.id);
       const h = exitHandlers.get(p.id);
       if (h) h(p.code);
       else pendingExit.set(p.id, p.code);
       dataHandlers.delete(p.id);
       exitHandlers.delete(p.id);
-      // Nobody attached (the tab was disposed before the spawn resolved): let the held output go.
+      // Nobody attached and nobody comes back within a while: let the output go.
       window.setTimeout(() => {
         if (!dataHandlers.has(p.id)) {
-          pendingData.delete(p.id);
+          history.delete(p.id);
           pendingExit.delete(p.id);
         }
-      }, 10_000);
+      }, 60_000);
     });
   })();
   return listening;
@@ -67,8 +79,13 @@ function ensureListeners() {
 
 export async function ptySpawn(opts: PtySpawnOptions): Promise<string> {
   await ensureListeners();
-  return invoke<string>('pty_spawn', { opts });
+  const id = await invoke<string>('pty_spawn', { opts });
+  alive.add(id);
+  return id;
 }
+
+/** Whether the process behind an id is still running (as far as this window knows). */
+export const ptyAlive = (id: string) => alive.has(id);
 
 export async function ptyWrite(id: string, data: string): Promise<void> {
   await invoke('pty_write', { id, data });
@@ -79,19 +96,18 @@ export async function ptyResize(id: string, cols: number, rows: number): Promise
 }
 
 export async function ptyKill(id: string): Promise<void> {
+  alive.delete(id);
+  history.delete(id);
+  pendingExit.delete(id);
   await invoke('pty_kill', { id });
 }
 
+/** Attaches a view: everything printed so far is replayed first, then live data follows. Detaching keeps the history. */
 export function onPtyData(id: string, handler: (data: Uint8Array) => void) {
   dataHandlers.set(id, handler);
-  const held = pendingData.get(id);
-  if (held) {
-    pendingData.delete(id);
-    for (const chunk of held) handler(chunk);
-  }
+  for (const chunk of history.get(id)?.chunks ?? []) handler(chunk);
   return () => {
     dataHandlers.delete(id);
-    pendingData.delete(id);
   };
 }
 
@@ -104,7 +120,6 @@ export function onPtyExit(id: string, handler: (code: number | null) => void) {
   }
   return () => {
     exitHandlers.delete(id);
-    pendingExit.delete(id);
   };
 }
 
