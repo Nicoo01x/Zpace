@@ -93,7 +93,7 @@ export function Onboarding() {
     <AnimatePresence>
       <motion.div key="onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.22 } }} className="absolute inset-0 z-[700] flex items-center justify-center bg-canvas">
         <div data-tauri-drag-region className="absolute inset-x-0 top-0 h-10" />
-        <motion.div initial={{ opacity: 0, y: 14, scale: 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={springs.modal} className="flex w-[600px] max-w-[calc(100vw-48px)] flex-col" style={{ height: 'min(640px, calc(100vh - 64px))' }}>
+        <motion.div initial={{ opacity: 0, y: 14, scale: 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={springs.modal} className="flex w-[600px] max-w-[calc(100vw-48px)] flex-col" style={{ height: 'min(640px, calc(100vh - 44px))' }}>
           {/* header: the mark, the step, skip */}
           <div className="flex items-center gap-3">
             <ZorynqTile size={32} className="shadow-[0_0_0_1px_var(--border)]" />
@@ -119,7 +119,7 @@ export function Onboarding() {
                 animate="present"
                 exit="exit"
                 transition={{ default: springs.living, opacity: { duration: 0.22 } }}
-                className="absolute inset-0 flex flex-col overflow-y-auto pt-9"
+                className="absolute inset-0 flex flex-col overflow-y-auto pt-6"
               >
                 {id === 'language' && <LanguageStep />}
                 {id === 'name' && <NameStep onSubmit={next} />}
@@ -132,7 +132,7 @@ export function Onboarding() {
           </div>
 
           {/* footer */}
-          <div className="flex items-center justify-between pt-5">
+          <div className="flex items-center justify-between pt-4">
             <div className="text-[11.5px] tabular text-muted">{t('Step {n} of {total}', { n: step + 1, total: STEPS.length })}</div>
             {id !== 'done' ? (
               <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ function Dots({ count, at, onPick }: { count: number; at: number; onPick: (i: nu
 
 function Heading({ title, sub }: { title: string; sub?: string }) {
   return (
-    <div className="mb-6">
+    <div className="mb-4">
       <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.02em] text-primary">{title}</h1>
       {sub ? <p className="mt-1.5 max-w-[480px] text-[13px] leading-relaxed text-secondary">{sub}</p> : null}
     </div>
@@ -260,7 +260,7 @@ function LookStep() {
               onClick={() => applyPack(pk.id)}
               className={cn('overflow-hidden rounded-lg text-left transition-shadow duration-(--motion-fast) press', on ? 'shadow-[0_0_0_2px_var(--accent)]' : 'shadow-[0_0_0_1px_var(--border)] hover:shadow-[0_0_0_1px_var(--text-muted)]')}
             >
-              <div className="flex h-10" style={{ background: canvas }}>
+              <div className="flex h-8" style={{ background: canvas }}>
                 <div className="w-1/3" />
                 <div className="flex flex-1 flex-col gap-1 p-2" style={{ background: bg }}>
                   <span className="h-1.5 w-2/3 rounded-full" style={{ background: text, opacity: 0.8 }} />
@@ -268,7 +268,7 @@ function LookStep() {
                   <span className="mt-auto h-2 w-6 rounded-full" style={{ background: accent }} />
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 px-2 py-1.5 text-[11.5px]">
+              <div className="flex items-center gap-1.5 px-2 py-1 text-[11.5px]">
                 <span className="size-2 shrink-0 rounded-full" style={{ background: accent }} />
                 <span className="truncate text-primary">{pk.label}</span>
                 {on ? <Check className="ml-auto size-[12px] shrink-0 text-accent" /> : null}
@@ -277,7 +277,7 @@ function LookStep() {
           );
         })}
       </div>
-      <div className="mb-2 mt-5 text-[11.5px] font-medium uppercase tracking-[0.05em] text-muted">{t('Accent')}</div>
+      <div className="mb-2 mt-4 text-[11.5px] font-medium uppercase tracking-[0.05em] text-muted">{t('Accent')}</div>
       <div className="flex flex-wrap items-center gap-2">
         {ACCENT_PRESETS.map((p, i) => {
           const selected = s.accent === p.id;
