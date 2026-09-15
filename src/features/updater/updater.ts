@@ -1,4 +1,6 @@
 import { isTauri } from '@/lib/platform';
+import { invoke } from '@/native/bridge';
+import { flushDurable } from '@/lib/durable-storage';
 import { toast } from '@/features/notifications/toast-store';
 import { t } from '@/i18n';
 import { fetchReleaseNotes, useUpdate } from './store';
@@ -9,7 +11,12 @@ import { fetchReleaseNotes, useUpdate } from './store';
  * update dialog with the release's notes, downloads on "Update now" and
  * installs on restart. "Check" is manual (About) or once at launch when the
  * setting is on. Without a reachable endpoint it says so and stops.
+ *
+ * The check and the install are our own commands (`commands/updater.rs`),
+ * not the plugin's JS API: the plugin's pre-exit cleanup deadlocked on the
+ * state-file store and the installer never launched.
  */
+type DownloadEvent = { event: 'started'; data: { contentLength: number | null } } | { event: 'progress'; data: { chunkLength: number } } | { event: 'finished' };
 export interface UpdateInfo {
   version: string;
   currentVersion: string;
@@ -23,8 +30,7 @@ export async function checkForUpdates(opts: { quiet?: boolean } = {}): Promise<U
   if (!isTauri || checking) return null;
   checking = true;
   try {
-    const { check } = await import('@tauri-apps/plugin-updater');
-    const update = await check({ timeout: 15_000 });
+    const update = await invoke<UpdateInfo | null>('update_check');
     if (!update) {
       if (!opts.quiet) toast.success(t('Zpace is up to date'), { description: t('Nothing newer on the update channel.'), key: 'updater' });
       return null;
@@ -38,15 +44,20 @@ export async function checkForUpdates(opts: { quiet?: boolean } = {}): Promise<U
       currentVersion: update.currentVersion,
       notes,
       install: async (onProgress) => {
+        const { Channel } = await import('@tauri-apps/api/core');
         let total: number | null = null;
         let done = 0;
-        await update.downloadAndInstall((ev) => {
-          if (ev.event === 'Started') total = ev.data.contentLength ?? null;
-          else if (ev.event === 'Progress') {
+        const onEvent = new Channel<DownloadEvent>();
+        onEvent.onmessage = (ev) => {
+          if (ev.event === 'started') total = ev.data.contentLength ?? null;
+          else if (ev.event === 'progress') {
             done += ev.data.chunkLength;
             onProgress(done, total);
-          } else if (ev.event === 'Finished') onProgress(total ?? done, total ?? done);
-        });
+          } else if (ev.event === 'finished') onProgress(total ?? done, total ?? done);
+        };
+        // the installer restarts the app: whatever the state file has not written yet goes to disk first
+        await flushDurable();
+        await invoke('update_install', { onEvent });
       },
     });
     return info;

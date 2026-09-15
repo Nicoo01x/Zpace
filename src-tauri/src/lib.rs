@@ -38,6 +38,7 @@ pub fn run() {
         .manage(PtyState::default())
         .manage(ProcessState::default())
         .manage(WatchState::default())
+        .manage(commands::updater::PendingUpdate::default())
         .setup(|app| {
             // The name the OS shows (taskbar, Alt+Tab, notifications) — whatever a platform config override left it at.
             if let Some(w) = app.get_webview_window("main") {
@@ -108,6 +109,8 @@ pub fn run() {
             commands::browser::browser_set_bounds,
             commands::browser::browser_set_visible,
             commands::browser::browser_close,
+            commands::updater::update_check,
+            commands::updater::update_install,
             commands::browser::browser_url,
             commands::browser::browser_zoom,
             commands::browser::open_devtools,

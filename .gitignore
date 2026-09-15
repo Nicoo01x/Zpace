@@ -21,3 +21,6 @@ CLAUDE.md
 
 # Personal notes
 docs/DESIGN.md
+
+# Local crate patches for debugging
+.patch/

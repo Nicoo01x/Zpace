@@ -11,6 +11,7 @@ pub mod watch;
 pub mod system;
 pub mod media;
 pub mod taskbar;
+pub mod updater;
 
 use std::process::Command;
 

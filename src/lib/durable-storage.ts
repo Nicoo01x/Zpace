@@ -94,3 +94,13 @@ export const durable: StateStorage = {
 };
 
 export const durableStorage = () => createJSONStorage(() => durable);
+
+/** Writes the state file now (it normally saves 400 ms after a change) — before an update restarts the app. */
+export async function flushDurable(): Promise<void> {
+  if (!isTauri) return;
+  try {
+    await (await file()).save();
+  } catch {
+    /* file unavailable */
+  }
+}
