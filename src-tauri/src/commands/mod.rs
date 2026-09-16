@@ -12,6 +12,8 @@ pub mod system;
 pub mod media;
 pub mod taskbar;
 pub mod updater;
+pub mod island;
+pub mod desktop;
 
 use std::process::Command;
 

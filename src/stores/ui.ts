@@ -13,6 +13,7 @@ export type SettingsSection =
   | 'browser'
   | 'mascot'
   | 'notifications'
+  | 'island'
   | 'automations'
   | 'mcp'
   | 'keyboard'

@@ -47,7 +47,14 @@ arboard = { version = "3", default-features = false, features = ["image-data"] }
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.38"
 windows-core = "0.61"
-windows = { version = "0.61", features = ["Media_SpeechRecognition", "Media_Control", "Storage_Streams", "Globalization", "Foundation", "Foundation_Collections", "Win32_System_WinRT"] }
+windows = { version = "0.61", features = [
+  "Media_SpeechRecognition", "Media_Control", "Storage_Streams", "Globalization", "Foundation", "Foundation_Collections", "Win32_System_WinRT",
+  # the desktop island: Action Center, app logos, the foreground window and its icon, Core Audio, the battery, the clipboard
+  "UI_Notifications", "UI_Notifications_Management", "ApplicationModel",
+  "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Accessibility", "Win32_UI_Shell", "Win32_Graphics_Gdi",
+  "Win32_System_Threading", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Power", "Win32_System_SystemInformation", "Win32_System_DataExchange", "Win32_System_LibraryLoader",
+  "Win32_Storage_FileSystem", "Win32_Media_Audio", "Win32_Media_Audio_Endpoints",
+] }
 windows-sys = { version = "0.60", features = ["Win32_System_Threading", "Win32_Graphics_Gdi", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_LibraryLoader"] }
 
 [profile.release]

@@ -33,6 +33,11 @@ export default defineConfig({
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
     chunkSizeWarningLimit: 1600,
     rolldownOptions: {
+      // Two pages: the app, and the desktop island's window.
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        island: fileURLToPath(new URL('./island.html', import.meta.url)),
+      },
       output: {
         advancedChunks: {
           groups: [

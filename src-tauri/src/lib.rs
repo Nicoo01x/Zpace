@@ -39,6 +39,7 @@ pub fn run() {
         .manage(ProcessState::default())
         .manage(WatchState::default())
         .manage(commands::updater::PendingUpdate::default())
+        .manage(commands::desktop::DesktopState::default())
         .setup(|app| {
             // The name the OS shows (taskbar, Alt+Tab, notifications) — whatever a platform config override left it at.
             if let Some(w) = app.get_webview_window("main") {
@@ -135,6 +136,19 @@ pub fn run() {
             commands::git::git_worktrees,
             commands::git::git_worktree_add,
             commands::git::git_worktree_remove,
+            commands::island::island_open,
+            commands::island::island_close,
+            commands::island::island_set_bounds,
+            commands::island::island_set_region,
+            commands::island::island_hide,
+            commands::island::island_reveal_main,
+            commands::desktop::desktop_watch,
+            commands::desktop::notification_dismiss,
+            commands::desktop::notifications_clear,
+            commands::desktop::volume_get,
+            commands::desktop::volume_set,
+            commands::desktop::power_status,
+            commands::desktop::activate_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Zpace");

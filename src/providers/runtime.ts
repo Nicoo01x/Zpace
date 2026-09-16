@@ -65,6 +65,8 @@ const turnStart = new Map<string, number>();
 
 async function notify(kind: 'permission' | 'completed' | 'error', sessionId: string, detail?: string) {
   const prefs = useSettings.getState().notifications;
+  // With the desktop island on, it already shows this over every app — a system toast on top would say it twice.
+  const desktopIsland = useSettings.getState().desktopIsland.enabled && isTauri;
   const session = useSessions.getState().sessions[sessionId];
   const project = useProjects.getState().projects.find((p) => p.id === session?.projectId);
   if (!session) return;
@@ -82,7 +84,7 @@ async function notify(kind: 'permission' | 'completed' | 'error', sessionId: str
   };
   if (kind === 'permission' && prefs.onPermission) {
     claudePermissionToast({ sessionId, title: session.title, project: project?.name, open });
-    if (!focused) void nativeNotify(title, body);
+    if (!focused && !desktopIsland) void nativeNotify(title, body);
     if (prefs.sound) playChime('attention', prefs.volume, prefs.soundTheme);
     if (prefs.speak) speak(t('Claude needs you'), speechLang(useSettings.getState().language));
   }
@@ -98,7 +100,7 @@ async function notify(kind: 'permission' | 'completed' | 'error', sessionId: str
         openReview(sessionId);
       },
     });
-    if (!focused) void nativeNotify(title, body);
+    if (!focused && !desktopIsland) void nativeNotify(title, body);
     if (prefs.sound) playChime('done', prefs.volume, prefs.soundTheme);
     celebrate('done');
     pullTrick('burst');

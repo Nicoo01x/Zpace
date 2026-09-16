@@ -10,6 +10,8 @@ export interface MediaNow {
   thumbnail: string | null;
   position_ms: number | null;
   duration_ms: number | null;
+  /** The desktop island's watcher sends position ticks without the cover: true means "the one you already have". */
+  same_art: boolean;
 }
 
 export async function mediaNow(): Promise<MediaNow | null> {

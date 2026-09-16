@@ -22,6 +22,7 @@ import { allPacks, applyEditorTheme, applyPack } from '@/features/appearance/pac
 import { bootPlugins, install as installPlugin, uninstall as uninstallPlugin, refreshIndex } from '@/features/plugins/registry';
 import { getTerminal } from '@/features/terminal/registry';
 import { pluginCommands } from '@/features/plugins/runtime';
+import { watchDesktopIsland } from '@/features/island/desktop/bridge';
 
 import { usePlugins } from '@/stores/plugins';
 import { resolveFontStack } from '@/lib/fonts';
@@ -48,6 +49,8 @@ export async function bootstrap() {
   startQueueRunner();
   watchClipboard();
   startAutomations();
+  // The desktop island: a second window over the screen, when the setting is on.
+  watchDesktopIsland();
   // Plugins: activate the enabled ones once their store has hydrated, then a quiet look at the registry.
   window.setTimeout(() => void bootPlugins(), 1500);
   // A quiet look at the update channel a few seconds in (only says something when there is news).

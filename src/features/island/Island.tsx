@@ -1,18 +1,20 @@
-import { useEffect, useRef, useState, type ReactNode, type PointerEvent as RPointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, animate, useMotionValue } from 'motion/react';
 import { useShallow } from 'zustand/react/shallow';
-import { Check, X, TriangleAlert, Info, GitCommit, ArrowUpFromLine, ArrowDownToLine, Terminal, NotebookPen, Globe, Trash2, BellOff, Loader2, ClipboardCheck } from 'lucide-react';
+import { X, Trash2, BellOff } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { springs } from '@/lib/motion';
 import { formatRelative } from '@/lib/format';
-import { useNotifications, unreadCount, type AppNotification, type NotificationMark, type NotificationVariant } from '@/stores/notifications';
+import { useNotifications, unreadCount, type AppNotification } from '@/stores/notifications';
 import { useSettings } from '@/stores/settings';
 import { useUI, collectLeaves } from '@/stores/ui';
 import { useLive, activityWord } from './live';
 import { useIslandChips } from './chips';
 import { ZorynqMark } from '@/features/brand/ZorynqMark';
-import { ClaudeLogo, CodexLogo, GeminiLogo, OpenCodeLogo } from '@/features/agent/BrandIcon';
+import { ClaudeLogo } from '@/features/agent/BrandIcon';
+import { markNode, VARIANT_GLYPH } from './glyphs';
+import { isTauri } from '@/lib/platform';
 import { t } from '@/i18n';
 
 /**
@@ -39,44 +41,6 @@ function clampShift(px: number, width: number): number {
   return Math.max(-reach, Math.min(reach, px));
 }
 
-const VARIANT_GLYPH: Record<NotificationVariant, { icon: ReactNode; color: string }> = {
-  success: { icon: <Check className="size-[11px]" strokeWidth={3} />, color: '#3ddc84' },
-  error: { icon: <X className="size-[11px]" strokeWidth={3} />, color: '#ff5f57' },
-  warning: { icon: <TriangleAlert className="size-[11px]" strokeWidth={2.5} />, color: '#ffbd2e' },
-  info: { icon: <Info className="size-[11px]" strokeWidth={2.5} />, color: '#5aa9ff' },
-  neutral: { icon: <span className="block size-1.5 rounded-full bg-current" />, color: 'rgba(255,255,255,0.7)' },
-  loading: { icon: <Loader2 className="size-[11px] animate-spin" strokeWidth={2.5} />, color: 'rgba(255,255,255,0.85)' },
-};
-
-function markNode(mark: NotificationMark | undefined, size: number): ReactNode {
-  switch (mark) {
-    case 'claude':
-      return <ClaudeLogo size={size} />;
-    case 'codex':
-      return <CodexLogo size={size} />;
-    case 'gemini':
-      return <GeminiLogo size={size} />;
-    case 'opencode':
-      return <OpenCodeLogo size={size} />;
-    case 'commit':
-      return <GitCommit size={size} />;
-    case 'push':
-      return <ArrowUpFromLine size={size} />;
-    case 'pull':
-      return <ArrowDownToLine size={size} />;
-    case 'terminal':
-      return <Terminal size={size} />;
-    case 'note':
-      return <NotebookPen size={size} />;
-    case 'browser':
-      return <Globe size={size} />;
-    case 'clipboard':
-      return <ClipboardCheck size={size} />;
-    default:
-      return null;
-  }
-}
-
 /** The glyph of one notification: its mark when it has one (a loading state keeps spinning), else the variant's check / cross / warning. */
 function Glyph({ n, size = 14 }: { n: AppNotification; size?: number }) {
   const icon = useNotifications((s) => s.extras[n.id]?.icon);
@@ -93,6 +57,7 @@ function Glyph({ n, size = 14 }: { n: AppNotification; size?: number }) {
 
 export function Island() {
   const surface = useSettings((s) => s.notifications.surface);
+  const desktop = useSettings((s) => s.desktopIsland.enabled);
   const welcomeOpen = useUI((s) => s.welcomeOpen);
   const { bloom, open, unread } = useNotifications(useShallow((s) => ({ bloom: s.bloom, open: s.open, unread: unreadCount(s.items) })));
   const setBloom = useNotifications((s) => s.setBloom);
@@ -139,7 +104,8 @@ export function Island() {
   // scaling — text and the mark stay crisp while it grows).
   const inner = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const shown = surface !== 'toasts' && !welcomeOpen;
+  // With the desktop island on, the floating window over the screen is the island; this one steps aside.
+  const shown = surface !== 'toasts' && !welcomeOpen && !(desktop && isTauri);
   useEffect(() => {
     const el = inner.current;
     if (!el || !shown) return;

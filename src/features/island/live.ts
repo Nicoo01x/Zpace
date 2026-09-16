@@ -1,5 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
-import { useSessions } from '@/stores/sessions';
+import { useSessions, type SessionsState } from '@/stores/sessions';
 import { basename } from '@/lib/format';
 import type { AgentActivity, AgentEvent } from '@/types/agent';
 import { t } from '@/i18n';
@@ -45,21 +45,22 @@ function subjectOf(events: AgentEvent[] | undefined): string | undefined {
   return undefined;
 }
 
+/** The live readout for a sessions-store state (the island in the title bar and the one on the desktop both read it). */
+export function liveOf(s: Pick<SessionsState, 'sessions' | 'events'>): LiveState | null {
+  const busy = Object.values(s.sessions).filter((x) => !x.hidden && (x.status === 'running' || x.status === 'waiting'));
+  if (!busy.length) return null;
+  const waiting = busy.filter((x) => x.status === 'waiting');
+  const lead = waiting[0] ?? busy.sort((a, b) => (b.runStartedAt ?? 0) - (a.runStartedAt ?? 0))[0];
+  return {
+    sessionId: lead.id,
+    title: lead.title,
+    activity: lead.status === 'waiting' ? 'waiting' : lead.activity,
+    subject: lead.status === 'waiting' ? undefined : subjectOf(s.events[lead.id]),
+    running: busy.length - waiting.length,
+    waiting: waiting.length,
+  };
+}
+
 export function useLive(): LiveState | null {
-  return useSessions(
-    useShallow((s) => {
-      const busy = Object.values(s.sessions).filter((x) => !x.hidden && (x.status === 'running' || x.status === 'waiting'));
-      if (!busy.length) return null;
-      const waiting = busy.filter((x) => x.status === 'waiting');
-      const lead = waiting[0] ?? busy.sort((a, b) => (b.runStartedAt ?? 0) - (a.runStartedAt ?? 0))[0];
-      return {
-        sessionId: lead.id,
-        title: lead.title,
-        activity: lead.status === 'waiting' ? 'waiting' : lead.activity,
-        subject: lead.status === 'waiting' ? undefined : subjectOf(s.events[lead.id]),
-        running: busy.length - waiting.length,
-        waiting: waiting.length,
-      };
-    }),
-  );
+  return useSessions(useShallow(liveOf));
 }
