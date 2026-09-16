@@ -6,7 +6,7 @@
 //! Commands are async on purpose: synchronous commands run on the main thread
 //! and window operations such as `add_child` would deadlock waiting for it.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewBuilder, WebviewUrl};
 
@@ -210,4 +210,299 @@ pub async fn open_devtools(app: AppHandle) {
     if let Some(wv) = app.get_webview_window("main") {
         wv.open_devtools();
     }
+}
+
+/// DevTools for a child webview (a plugin's device preview).
+#[tauri::command]
+pub async fn browser_devtools(app: AppHandle, label: String) -> Result<(), String> {
+    let wv = app.get_webview(&label).ok_or("browser not found")?;
+    wv.open_devtools();
+    Ok(())
+}
+
+/* ------------------------------------------------------------------ */
+/*  Device preview: a shaped, emulated child webview for plugins         */
+/* ------------------------------------------------------------------ */
+
+/// A cut-out of the webview's shape, logical px from its top-left corner.
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Hole {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+    pub radius: f64,
+}
+
+/// Clip the webview to a rounded rectangle minus holes (a phone screen: its
+/// corners, the island or the notch, the home indicator). Windows only: the
+/// region goes on wry's container window (`WRY_WEBVIEW`), which clips the
+/// WebView2 inside it; the page underneath shows through the holes. Resolves
+/// false where shapes are not supported so the caller can draw a flat screen.
+#[tauri::command]
+pub async fn browser_set_shape(app: AppHandle, label: String, width: f64, height: f64, radius: f64, holes: Vec<Hole>) -> Result<bool, String> {
+    let wv = app.get_webview(&label).ok_or("browser not found")?;
+    #[cfg(windows)]
+    {
+        let scale = wv.window().scale_factor().map_err(|e| e.to_string())?;
+        let clear = radius <= 0.0 && holes.is_empty();
+        wv.with_webview(move |platform| unsafe {
+            use windows::Win32::Foundation::HWND;
+            use windows::Win32::Graphics::Gdi::{CombineRgn, CreateRoundRectRgn, DeleteObject, SetWindowRgn, RGN_DIFF};
+            let mut hwnd = HWND::default();
+            if platform.controller().ParentWindow(&mut hwnd).is_err() || hwnd.is_invalid() {
+                return;
+            }
+            if clear {
+                let _ = SetWindowRgn(hwnd, None, true);
+                return;
+            }
+            let px = |v: f64| (v * scale).round() as i32;
+            let rgn = CreateRoundRectRgn(0, 0, px(width), px(height), px(radius * 2.0), px(radius * 2.0));
+            for h in &holes {
+                let hole = CreateRoundRectRgn(px(h.x), px(h.y), px(h.x + h.width), px(h.y + h.height), px(h.radius * 2.0), px(h.radius * 2.0));
+                let _ = CombineRgn(Some(rgn), Some(rgn), Some(hole), RGN_DIFF);
+                let _ = DeleteObject(hole.into());
+            }
+            // The window owns the region from here on.
+            let _ = SetWindowRgn(hwnd, Some(rgn), true);
+        })
+        .map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (wv, width, height, radius, holes);
+        Ok(false)
+    }
+}
+
+/// What a device preview asks the page engine to pretend — the same calls
+/// Chrome's device mode makes over the DevTools protocol.
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Emulation {
+    /// CSS px of the viewport; 0 derives it from the bounds and the scale, as device mode does.
+    #[serde(default)]
+    pub width: u32,
+    #[serde(default)]
+    pub height: u32,
+    /// What `screen.width` / `screen.height` report; 0 leaves them to the viewport.
+    #[serde(default)]
+    pub screen_width: u32,
+    #[serde(default)]
+    pub screen_height: u32,
+    /// Keep the view at its own size while `width`/`height` set the layout viewport — device mode's way of
+    /// drawing a fixed viewport scaled into whatever room it has.
+    #[serde(default)]
+    pub keep_view_size: bool,
+    pub device_scale_factor: f64,
+    pub mobile: bool,
+    pub touch: bool,
+    #[serde(default)]
+    pub user_agent: String,
+    /// `navigator.platform` to report ("iPhone", "Linux armv8l"); empty leaves it.
+    #[serde(default)]
+    pub platform: String,
+    /// Client hints (`Sec-CH-UA-*`) for the override, as the protocol takes them.
+    #[serde(default)]
+    pub user_agent_metadata: Option<serde_json::Value>,
+    /// "light" | "dark" | "" (no override).
+    #[serde(default)]
+    pub color_scheme: String,
+    /// Draw the emulated viewport at this factor — device mode's own zoom, since a mobile page ignores the
+    /// browser's; 0 or 1 leaves it.
+    #[serde(default)]
+    pub scale: f64,
+}
+
+/// The user agent each child webview shipped with, kept so the override can be undone.
+#[cfg(windows)]
+static DEFAULT_UA: std::sync::Mutex<Option<std::collections::HashMap<String, String>>> = std::sync::Mutex::new(None);
+
+/// Emulate a device in a child webview (viewport, pixel ratio, mobile
+/// viewport meta, touch, user agent, colour scheme) — or undo it all with
+/// `None`. Windows only (WebView2 exposes the DevTools protocol); resolves
+/// false elsewhere, where the page simply renders at the given size.
+#[tauri::command]
+pub async fn browser_emulate(app: AppHandle, label: String, emulation: Option<Emulation>) -> Result<bool, String> {
+    let wv = app.get_webview(&label).ok_or("browser not found")?;
+    #[cfg(windows)]
+    {
+        let key = label.clone();
+        wv.with_webview(move |platform| unsafe {
+            use serde_json::json;
+            use webview2_com::CallDevToolsProtocolMethodCompletedHandler;
+            use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings2;
+            use windows_core::{Interface, HSTRING};
+            let Ok(core) = platform.controller().CoreWebView2() else { return };
+            let call = |method: &str, params: serde_json::Value| {
+                let handler = CallDevToolsProtocolMethodCompletedHandler::create(Box::new(|_, _| Ok(())));
+                let _ = core.CallDevToolsProtocolMethod(&HSTRING::from(method), &HSTRING::from(params.to_string()), &handler);
+            };
+            let settings = core.Settings().ok().and_then(|s| s.cast::<ICoreWebView2Settings2>().ok());
+            let mut defaults = DEFAULT_UA.lock().unwrap_or_else(|p| p.into_inner());
+            let defaults = defaults.get_or_insert_with(Default::default);
+            match emulation {
+                Some(e) => {
+                    let mut metrics = json!({ "width": e.width, "height": e.height, "deviceScaleFactor": e.device_scale_factor, "mobile": e.mobile, "dontSetVisibleSize": e.keep_view_size });
+                    if e.scale > 0.0 && (e.scale - 1.0).abs() > f64::EPSILON {
+                        metrics["scale"] = json!(e.scale);
+                    }
+                    if e.screen_width > 0 && e.screen_height > 0 {
+                        metrics["screenWidth"] = json!(e.screen_width);
+                        metrics["screenHeight"] = json!(e.screen_height);
+                    }
+                    call("Emulation.setDeviceMetricsOverride", metrics);
+                    call("Emulation.setTouchEmulationEnabled", json!({ "enabled": e.touch, "maxTouchPoints": 5 }));
+                    call("Emulation.setEmitTouchEventsForMouse", json!({ "enabled": e.touch, "configuration": if e.mobile { "mobile" } else { "desktop" } }));
+                    if !e.user_agent.is_empty() {
+                        // The settings' user agent is what new documents and requests get; it goes first because
+                        // WebView2 applies it as a protocol override of its own, which would undo the platform below.
+                        if let Some(s2) = &settings {
+                            if !defaults.contains_key(&key) {
+                                let mut cur = windows_core::PWSTR::null();
+                                if s2.UserAgent(&mut cur).is_ok() && !cur.is_null() {
+                                    defaults.insert(key.clone(), cur.to_string().unwrap_or_default());
+                                    windows::Win32::System::Com::CoTaskMemFree(Some(cur.0 as _));
+                                }
+                            }
+                            let _ = s2.SetUserAgent(&HSTRING::from(e.user_agent.as_str()));
+                        }
+                        let mut ua = json!({ "userAgent": e.user_agent });
+                        if !e.platform.is_empty() {
+                            ua["platform"] = json!(e.platform);
+                        }
+                        if let Some(meta) = e.user_agent_metadata.clone() {
+                            ua["userAgentMetadata"] = meta;
+                        }
+                        call("Emulation.setUserAgentOverride", ua);
+                    }
+                    let features = if e.color_scheme.is_empty() { json!([]) } else { json!([{ "name": "prefers-color-scheme", "value": e.color_scheme }]) };
+                    call("Emulation.setEmulatedMedia", json!({ "features": features }));
+                }
+                None => {
+                    call("Emulation.clearDeviceMetricsOverride", json!({}));
+                    call("Emulation.setTouchEmulationEnabled", json!({ "enabled": false }));
+                    call("Emulation.setEmitTouchEventsForMouse", json!({ "enabled": false }));
+                    call("Emulation.setUserAgentOverride", json!({ "userAgent": "" }));
+                    call("Emulation.setEmulatedMedia", json!({ "features": [] }));
+                    if let (Some(s2), Some(ua)) = (&settings, defaults.get(&key)) {
+                        let _ = s2.SetUserAgent(&HSTRING::from(ua.as_str()));
+                    }
+                }
+            }
+        })
+        .map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (wv, emulation);
+        Ok(false)
+    }
+}
+
+/// One DevTools protocol call on a child webview (`Emulation.*`, `Network.*`…):
+/// what a device preview uses for everything beyond the basics — reduced
+/// motion, vision deficiencies, network conditions, locale, geolocation.
+/// Resolves with the method's result. Windows only.
+#[tauri::command]
+pub async fn browser_cdp(app: AppHandle, label: String, method: String, params: serde_json::Value) -> Result<serde_json::Value, String> {
+    let wv = app.get_webview(&label).ok_or("browser not found")?;
+    #[cfg(windows)]
+    {
+        let (tx, rx) = std::sync::mpsc::channel::<Result<String, String>>();
+        wv.with_webview(move |platform| unsafe {
+            use webview2_com::CallDevToolsProtocolMethodCompletedHandler;
+            use windows_core::HSTRING;
+            let Ok(core) = platform.controller().CoreWebView2() else {
+                let _ = tx.send(Err("webview not ready".into()));
+                return;
+            };
+            let sent = tx.clone();
+            let handler = CallDevToolsProtocolMethodCompletedHandler::create(Box::new(move |hr, json| {
+                let _ = sent.send(hr.map(|_| json).map_err(|e| e.message()));
+                Ok(())
+            }));
+            if let Err(e) = core.CallDevToolsProtocolMethod(&HSTRING::from(method), &HSTRING::from(params.to_string()), &handler) {
+                let _ = tx.send(Err(e.message()));
+            }
+        })
+        .map_err(|e| e.to_string())?;
+        let json = rx.recv_timeout(std::time::Duration::from_secs(5)).map_err(|_| "protocol call timed out".to_string())??;
+        Ok(serde_json::from_str(&json).unwrap_or(serde_json::Value::Null))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (wv, method, params);
+        Err("protocol access unsupported".into())
+    }
+}
+
+/// A PNG of what the child webview shows right now, base64 — the still a
+/// device preview shows while it is being dragged. Windows only (WebView2's
+/// `CapturePreview`); elsewhere the caller falls back to a screen grab.
+#[tauri::command]
+pub async fn browser_snapshot(app: AppHandle, label: String) -> Result<String, String> {
+    let wv = app.get_webview(&label).ok_or("browser not found")?;
+    #[cfg(windows)]
+    {
+        let (tx, rx) = std::sync::mpsc::channel::<Result<String, String>>();
+        wv.with_webview(move |platform| unsafe {
+            use webview2_com::CapturePreviewCompletedHandler;
+            use webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG;
+            use windows::Win32::UI::Shell::SHCreateMemStream;
+            let Ok(core) = platform.controller().CoreWebView2() else {
+                let _ = tx.send(Err("webview not ready".into()));
+                return;
+            };
+            let Some(stream) = SHCreateMemStream(None) else {
+                let _ = tx.send(Err("no memory stream".into()));
+                return;
+            };
+            let done = stream.clone();
+            let sent = tx.clone();
+            let handler = CapturePreviewCompletedHandler::create(Box::new(move |hr| {
+                let _ = sent.send(hr.map_err(|e| e.message()).and_then(|_| read_stream(&done)));
+                Ok(())
+            }));
+            if let Err(e) = core.CapturePreview(COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG, &stream, &handler) {
+                let _ = tx.send(Err(e.message()));
+            }
+        })
+        .map_err(|e| e.to_string())?;
+        // a hidden webview never answers: the caller is told quickly instead of waiting
+        rx.recv_timeout(std::time::Duration::from_millis(1500)).map_err(|_| "snapshot timed out".to_string())?
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = wv;
+        Err("snapshot unsupported".into())
+    }
+}
+
+/// Everything in a COM stream, from the start, as base64.
+#[cfg(windows)]
+fn read_stream(stream: &windows::Win32::System::Com::IStream) -> Result<String, String> {
+    use base64::Engine;
+    use windows::Win32::System::Com::STREAM_SEEK_SET;
+    let mut out: Vec<u8> = Vec::new();
+    let mut chunk = [0u8; 64 * 1024];
+    unsafe {
+        stream.Seek(0, STREAM_SEEK_SET, None).map_err(|e| e.message())?;
+        loop {
+            let mut read: u32 = 0;
+            let hr = stream.Read(chunk.as_mut_ptr() as _, chunk.len() as u32, Some(&mut read));
+            if hr.is_err() && read == 0 {
+                return Err(hr.message());
+            }
+            if read == 0 {
+                break;
+            }
+            out.extend_from_slice(&chunk[..read as usize]);
+        }
+    }
+    Ok(base64::engine::general_purpose::STANDARD.encode(out))
 }

@@ -38,6 +38,63 @@ export async function browserClose(label: string) {
 export async function browserZoom(label: string, factor: number) {
   await invoke('browser_zoom', { label, factor });
 }
+export async function browserDevtools(label: string) {
+  await invoke('browser_devtools', { label });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Device preview (plugins): shape, emulation, snapshot                */
+/* ------------------------------------------------------------------ */
+
+/** A cut-out of a shaped webview, CSS px from its top-left corner (may start outside it). */
+export interface ShapeHole {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  radius: number;
+}
+
+/** Clip the webview to a rounded rectangle minus holes. Resolves false where the platform cannot shape it. */
+export async function browserSetShape(label: string, width: number, height: number, radius: number, holes: ShapeHole[] = []): Promise<boolean> {
+  return invoke('browser_set_shape', { label, width, height, radius, holes });
+}
+
+/** What Chrome's device mode pretends, over the DevTools protocol. */
+export interface Emulation {
+  /** CSS px of the viewport; 0 derives it from the bounds and the scale, as device mode does. */
+  width?: number;
+  height?: number;
+  /** What `screen.width` / `screen.height` report. */
+  screenWidth?: number;
+  screenHeight?: number;
+  /** Keep the view at its own size while `width`/`height` set the layout viewport (drawn at `scale`). */
+  keepViewSize?: boolean;
+  deviceScaleFactor: number;
+  mobile: boolean;
+  touch: boolean;
+  userAgent?: string;
+  platform?: string;
+  userAgentMetadata?: unknown;
+  colorScheme?: 'light' | 'dark' | '';
+  /** Draw the emulated viewport at this factor. */
+  scale?: number;
+}
+
+/** Emulate a device (or undo it with null). Resolves false where the platform has no protocol access. */
+export async function browserEmulate(label: string, emulation: Emulation | null): Promise<boolean> {
+  return invoke('browser_emulate', { label, emulation });
+}
+
+/** One DevTools protocol call on the webview; resolves with the method's result. */
+export async function browserCdp(label: string, method: string, params: Record<string, unknown> = {}): Promise<unknown> {
+  return invoke('browser_cdp', { label, method, params });
+}
+
+/** A PNG (base64) of what the webview shows right now. */
+export async function browserSnapshot(label: string): Promise<string> {
+  return invoke('browser_snapshot', { label });
+}
 
 export interface BrowserEvents {
   onNavigated?: (url: string) => void;

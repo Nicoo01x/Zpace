@@ -1509,4 +1509,7 @@ export const ptBR: Record<string, string> = {
   'Back with the next thing to say': 'Volta com a próxima coisa a dizer',
   'After': 'Depois de',
   'Nothing unfolds except what needs an answer. Also in the island’s right-click menu.': 'Nada se abre além do que precisa de resposta. Também no menu do clique direito da ilha.',
+  'Close {name}': 'Fechar {name}',
+  'This plugin needs Zpace {version} — update the app first.': 'Este plugin precisa do Zpace {version} — atualize o app primeiro.',
+  'Zpace {version}+': 'Zpace {version}+',
 };

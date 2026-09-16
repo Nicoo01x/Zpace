@@ -134,7 +134,7 @@ function Author({ author }: { author: PluginManifest['author'] }) {
 function Tags({ m }: { m: PluginManifest }) {
   const tags = m.tags ?? [];
   const perms = m.permissions ?? [];
-  if (!tags.length && !perms.length) return null;
+  if (!tags.length && !perms.length && !m.minZpace) return null;
   return (
     <div className="flex flex-wrap items-center gap-1">
       {tags.map((tg) => (
@@ -142,6 +142,9 @@ function Tags({ m }: { m: PluginManifest }) {
           {tg}
         </span>
       ))}
+      {m.minZpace ? (
+        <span className="rounded-md bg-surface-inset px-1.5 py-px text-[10.5px] font-medium tracking-[0.02em] text-muted">{t('Zpace {version}+', { version: m.minZpace })}</span>
+      ) : null}
       {perms.length ? <span className="min-w-0 basis-full text-[11px] leading-snug text-muted">{t('Needs: {perms}', { perms: perms.join(', ') })}</span> : null}
     </div>
   );

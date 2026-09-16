@@ -58,6 +58,13 @@ async function fetchText(path: string): Promise<string> {
   throw new Error(`${last} · ${path.split('?')[0]}`);
 }
 
+let version: string | null = null;
+/** The app's own version, once. */
+async function appVersion(): Promise<string> {
+  version ??= await import('@tauri-apps/api/app').then(({ getVersion }) => getVersion()).catch(() => '0.0.0');
+  return version;
+}
+
 export async function install(entry: RegistryEntry): Promise<void> {
   const store = usePlugins.getState();
   if (!isTauri) {
@@ -65,6 +72,11 @@ export async function install(entry: RegistryEntry): Promise<void> {
     return;
   }
   if (store.busy[entry.id]) return;
+  // a plugin built on an API this build does not have would only fail once open
+  if (entry.minZpace && olderThan(await appVersion(), entry.minZpace)) {
+    toast.warning(t('This plugin needs Zpace {version} — update the app first.', { version: entry.minZpace }));
+    return;
+  }
   store.setBusy(entry.id, 'installing');
   try {
     const previous = store.installed[entry.id];

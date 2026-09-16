@@ -1,10 +1,11 @@
 import { memo } from 'react';
-import { PanelRight, Power, Settings2, Trash2 } from 'lucide-react';
+import { PanelRight, PictureInPicture2, Power, Settings2, Trash2, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/cn';
 import { t } from '@/i18n';
 import { useUI, collectLeaves } from '@/stores/ui';
 import { usePlugins, type InstalledPlugin } from '@/stores/plugins';
+import { useFloats, floatKey } from '@/stores/floats';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/ContextMenu';
 import { setEnabled, uninstall } from './registry';
 import { openPane, openPlugin, pluginPanes } from './runtime';
@@ -20,10 +21,12 @@ export const PluginRow = memo(function PluginRow({ plugin: p }: { plugin: Instal
   const entry = usePlugins(useShallow((s) => s.index?.plugins.find((e) => e.id === p.id)));
   const icon = useIcon(entry, p.manifest);
   const error = p.error;
-  const active = useUI((s) => {
+  const activeTile = useUI((s) => {
     const c = collectLeaves(s.layout).find((l) => l.id === s.activePaneId)?.content;
     return c?.kind === 'plugin' && c.pluginId === p.id;
   });
+  const floatOpen = useFloats((s) => Object.values(s.floats).some((f) => f.pluginId === p.id));
+  const active = activeTile || floatOpen;
   // script panes register at activation, so the list is read when the menu is built, not memoised
   const panes = pluginPanes(p);
   const open = () => {
@@ -59,11 +62,19 @@ export const PluginRow = memo(function PluginRow({ plugin: p }: { plugin: Instal
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        {panes.map((pane) => (
-          <ContextMenuItem key={pane.id} icon={<PanelRight />} onSelect={() => openPane({ kind: 'plugin', pluginId: p.id, paneId: pane.id })}>
-            {t('Open {name}', { name: pane.title })}
-          </ContextMenuItem>
-        ))}
+        {panes.map((pane) => {
+          const float = p.manifest.contributes?.panes?.find((x) => x.id === pane.id)?.float;
+          const open = float && useFloats.getState().floats[floatKey(p.id, pane.id)];
+          return open ? (
+            <ContextMenuItem key={pane.id} icon={<X />} onSelect={() => useFloats.getState().close(floatKey(p.id, pane.id))}>
+              {t('Close {name}', { name: pane.title })}
+            </ContextMenuItem>
+          ) : (
+            <ContextMenuItem key={pane.id} icon={float ? <PictureInPicture2 /> : <PanelRight />} onSelect={() => openPane({ kind: 'plugin', pluginId: p.id, paneId: pane.id })}>
+              {t('Open {name}', { name: pane.title })}
+            </ContextMenuItem>
+          );
+        })}
         {panes.length ? <ContextMenuSeparator /> : null}
         <ContextMenuItem icon={<Power />} onSelect={() => void setEnabled(p.id, !p.enabled)}>
           {p.enabled ? t('Switch off') : t('Switch on')}

@@ -19,6 +19,7 @@ import { watchClipboard } from '@/stores/clips';
 import { startAutomations } from '@/features/automations/runner';
 import { checkForUpdates } from '@/features/updater/updater';
 import { allPacks, applyEditorTheme, applyPack } from '@/features/appearance/packs';
+import { useFloats } from '@/stores/floats';
 import { bootPlugins, install as installPlugin, uninstall as uninstallPlugin, refreshIndex } from '@/features/plugins/registry';
 import { getTerminal } from '@/features/terminal/registry';
 import { pluginCommands } from '@/features/plugins/runtime';
@@ -64,7 +65,7 @@ export async function bootstrap() {
   }, 350);
   if (import.meta.env.DEV) {
     // Automation hook for dev/e2e scripts only (never shipped in production builds).
-    (window as unknown as { __conduit?: unknown }).__conduit = { useProjects, useSessions, useUI, useSettings, useTerminals, useNotes, useEnvironment, useTouched, useMargin, useNotifications, useArena, useAgents, useUpdate, usePlugins, seedMockWorkspace, dev: { pluginCommands, installPlugin, uninstallPlugin, refreshIndex, applyPack, allPacks, getTerminal } };
+    (window as unknown as { __conduit?: unknown }).__conduit = { useProjects, useSessions, useUI, useSettings, useTerminals, useNotes, useEnvironment, useTouched, useMargin, useNotifications, useArena, useAgents, useUpdate, usePlugins, useFloats, seedMockWorkspace, dev: { pluginCommands, installPlugin, uninstallPlugin, refreshIndex, applyPack, allPacks, getTerminal } };
   }
   const env = useEnvironment.getState();
   env.setLoading(true);

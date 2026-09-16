@@ -1509,4 +1509,7 @@ export const ru: Record<string, string> = {
   'Back with the next thing to say': 'Возвращается со следующим сообщением',
   'After': 'Через',
   'Nothing unfolds except what needs an answer. Also in the island’s right-click menu.': 'Ничего не раскрывается, кроме того, что ждёт ответа. Есть и в меню острова по правому клику.',
+  'Close {name}': 'Закрыть {name}',
+  'This plugin needs Zpace {version} — update the app first.': 'Этому плагину нужен Zpace {version} — сначала обновите приложение.',
+  'Zpace {version}+': 'Zpace {version}+',
 };

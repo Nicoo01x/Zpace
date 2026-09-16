@@ -1509,4 +1509,7 @@ export const ja: Record<string, string> = {
   'Back with the next thing to say': '次の通知で戻ります',
   'After': '経過後',
   'Nothing unfolds except what needs an answer. Also in the island’s right-click menu.': '返答が必要なもの以外は開きません。アイランドの右クリックメニューにもあります。',
+  'Close {name}': '{name} を閉じる',
+  'This plugin needs Zpace {version} — update the app first.': 'このプラグインには Zpace {version} が必要です。先にアプリを更新してください。',
+  'Zpace {version}+': 'Zpace {version}+',
 };

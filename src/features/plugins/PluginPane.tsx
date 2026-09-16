@@ -2,10 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Puzzle } from 'lucide-react';
 import { usePlugins } from '@/stores/plugins';
 import { useSettings } from '@/stores/settings';
+import { useUI } from '@/stores/ui';
+import { useFloats, floatKey } from '@/stores/floats';
+import { usePaneDrag } from '@/features/sessions/pane-drag';
+import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
+import { deliverPng, type DeliverAction } from '@/features/browser/deliver';
 import { readTextFile, joinPath } from '@/native/system';
 import { Spinner } from '@/components/ui/Spinner';
 import { t } from '@/i18n';
-import { apiFor, htmlPanes, paneMessage, paneWindows, pluginCommands, type PluginEvent, type ZpaceApi } from './runtime';
+import { apiFor, htmlPanes, need, paneMessage, paneWindows, pluginCommands, type PluginEvent, type ZpaceApi } from './runtime';
+import { PaneWebviews, type WebviewRect, type WebviewShape } from './webviews';
+import type { Emulation } from '@/native/browser';
 
 /**
  * A plugin's page as a workspace pane: its HTML in a sandboxed iframe
@@ -14,6 +21,10 @@ import { apiFor, htmlPanes, paneMessage, paneWindows, pluginCommands, type Plugi
  * `zpace.notify({…})`, `zpace.on('session:completed', cb)` — with the
  * same permissions the manifest declared. The app pushes its theme in as
  * CSS variables, and `zpace.on('theme', cb)` fires when it changes.
+ *
+ * Two things belong to the pane instance rather than the plugin:
+ * `zpace.webview` (native webviews placed over the page, permission
+ * `browser`) and, when the pane is a float, `zpace.float` (its geometry).
  */
 
 /** Runs inside the frame: promise calls over postMessage, a Proxy so `zpace.a.b(x)` becomes call('a.b', x). */
@@ -35,7 +46,7 @@ const BRIDGE = `(() => {
   window.zpace = proxy('');
 })();`;
 
-const VARS = ['--canvas', '--background', '--surface', '--surface-inset', '--surface-hover', '--text-primary', '--text-secondary', '--text-muted', '--accent', '--accent-soft', '--border', '--border-strong', '--success', '--warning', '--danger'];
+const VARS = ['--canvas', '--background', '--surface', '--surface-inset', '--surface-hover', '--surface-active', '--surface-raised', '--text-primary', '--text-secondary', '--text-muted', '--accent', '--accent-soft', '--border', '--border-subtle', '--border-strong', '--success', '--warning', '--danger'];
 
 function themeMessage() {
   const cs = getComputedStyle(document.documentElement);
@@ -45,7 +56,7 @@ function themeMessage() {
 }
 
 /** `a.b.c` on the API object, bound to its parent so `this` works. */
-function resolve(api: ZpaceApi, path: string): ((...args: unknown[]) => unknown) | null {
+function resolve(api: object, path: string): ((...args: unknown[]) => unknown) | null {
   const parts = path.split('.');
   let cur: unknown = api;
   let parent: unknown = null;
@@ -57,7 +68,38 @@ function resolve(api: ZpaceApi, path: string): ((...args: unknown[]) => unknown)
   return typeof cur === 'function' ? (cur as (...a: unknown[]) => unknown).bind(parent) : null;
 }
 
-export function PluginPane({ pluginId, paneId }: { pluginId: string; paneId: string }) {
+/** Events the pane answers itself (its webviews, its float) — no plugin permission, no script listener. */
+const PANE_EVENT = /^(webview|float):/;
+
+/** What `zpace.webview` and `zpace.float` look like from the page. */
+interface PaneApi extends ZpaceApi {
+  webview: {
+    capabilities: () => { available: boolean; shape: boolean; emulate: boolean; snapshot: boolean };
+    open: (opts: { id: string; url: string; rect: WebviewRect }) => Promise<void>;
+    setRect: (id: string, rect: WebviewRect) => Promise<void>;
+    navigate: (id: string, url: string) => Promise<void>;
+    eval: (id: string, js: string) => Promise<void>;
+    zoom: (id: string, factor: number) => Promise<void>;
+    emulate: (id: string, emulation: Emulation | null) => Promise<boolean>;
+    shape: (id: string, shape: WebviewShape | null) => Promise<boolean>;
+    setVisible: (id: string, visible: boolean) => Promise<void>;
+    snapshot: (id: string) => Promise<string>;
+    /** Copy / save / attach a capture — a fresh one, or the data URL the page already holds (a still taken while a menu covers the view). */
+    screenshot: (id: string, action: DeliverAction, title?: string, png?: string) => Promise<void>;
+    devtools: (id: string) => Promise<void>;
+    /** One DevTools protocol call on the webview (Emulation.*, Network.*…); resolves with its result. */
+    cdp: (id: string, method: string, params?: Record<string, unknown>) => Promise<unknown>;
+    close: (id: string) => Promise<void>;
+  };
+  float: {
+    get: () => { x: number; y: number; width: number; height: number; arena: { width: number; height: number } } | null;
+    set: (geometry: { x?: number; y?: number; width?: number; height?: number }) => void;
+    focus: () => void;
+    close: () => void;
+  };
+}
+
+export function PluginPane({ pluginId, paneId, floating = false }: { pluginId: string; paneId: string; floating?: boolean }) {
   const plugin = usePlugins((s) => s.installed[pluginId]);
   const theme = useSettings((s) => s.theme);
   const themePack = useSettings((s) => s.themePack);
@@ -66,6 +108,23 @@ export function PluginPane({ pluginId, paneId }: { pluginId: string; paneId: str
   const [html, setHtml] = useState<string | null>(adhoc?.html ?? null);
   const [error, setError] = useState<string | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
+  // the native webviews the page opens live as long as this pane instance does
+  const [webviews] = useState(() => new PaneWebviews(pluginId));
+
+  // Any modal layer of the app (palette, dialogs, sheets, a pane being dragged) must hide the native webviews.
+  const dragging = usePaneDrag((s) => !!s.content);
+  const overlayOpen = useUI((s) => s.paletteOpen || s.spotlightOpen || s.stackOpen || s.welcomeOpen || s.settingsOpen || s.searchOpen || s.aboutOpen || s.cloneOpen || !!s.newProject || s.gitPanelOpen || !!s.lightbox || !!s.diffViewer || !!s.claudeLaunch) || dragging;
+  useEffect(() => {
+    webviews.setHostHidden(overlayOpen);
+  }, [overlayOpen, webviews]);
+
+  // Where a screenshot goes: the active chat, or a new one — read at call time, not when the bridge was built.
+  const { newSession, currentProject } = useWorkspaceActions();
+  const activeSessionId = useUI((s) => s.activeSessionId);
+  const deliver = useRef({ newSession, currentProject, activeSessionId });
+  useEffect(() => {
+    deliver.current = { newSession, currentProject, activeSessionId };
+  }, [newSession, currentProject, activeSessionId]);
 
   useEffect(() => {
     if (adhoc || !plugin || !spec) return;
@@ -81,7 +140,43 @@ export function PluginPane({ pluginId, paneId }: { pluginId: string; paneId: str
   // the bridge: calls from the page, events to it, its window registered for the script
   useEffect(() => {
     if (!plugin) return;
-    const api = apiFor(plugin);
+    const wv = webviews;
+    wv.resume();
+    const key = floatKey(pluginId, paneId);
+    const api: PaneApi = {
+      ...apiFor(plugin),
+      webview: {
+        capabilities: () => wv.capabilities(),
+        open: (opts) => (need(plugin, 'browser'), wv.open(opts)),
+        setRect: (id, rect) => (need(plugin, 'browser'), wv.setRect(id, rect)),
+        navigate: (id, url) => (need(plugin, 'browser'), wv.navigate(id, url)),
+        eval: (id, js) => (need(plugin, 'browser'), wv.eval(id, js)),
+        zoom: (id, factor) => (need(plugin, 'browser'), wv.zoom(id, factor)),
+        emulate: (id, emulation) => (need(plugin, 'browser'), wv.emulate(id, emulation)),
+        shape: (id, shape) => (need(plugin, 'browser'), wv.shape(id, shape)),
+        setVisible: (id, visible) => (need(plugin, 'browser'), wv.setVisible(id, visible)),
+        snapshot: (id) => (need(plugin, 'browser'), wv.snapshot(id)),
+        screenshot: async (id, action, title, png) => {
+          need(plugin, 'browser');
+          const data = png ? png.slice(png.indexOf(',') + 1) : await wv.png(id);
+          await deliverPng(action, data, title ?? plugin.manifest.name, deliver.current);
+        },
+        devtools: (id) => (need(plugin, 'browser'), wv.devtools(id)),
+        cdp: (id, method, params) => (need(plugin, 'browser'), wv.cdp(id, method, params)),
+        close: (id) => (need(plugin, 'browser'), wv.close(id)),
+      },
+      float: {
+        get: () => {
+          const f = floating ? useFloats.getState().floats[key] : undefined;
+          if (!f) return null;
+          const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--titlebar-height')) || 34;
+          return { x: f.x, y: f.y, width: f.width, height: f.height, arena: { width: window.innerWidth, height: window.innerHeight - bar } };
+        },
+        set: (g) => floating && useFloats.getState().set(key, g),
+        focus: () => floating && useFloats.getState().raise(key),
+        close: () => floating && useFloats.getState().close(key),
+      },
+    };
     const disposers: Array<() => void> = [];
     let registered: Window | null = null;
     const post = (m: unknown) => frame.current?.contentWindow?.postMessage(m, '*');
@@ -101,8 +196,8 @@ export function PluginPane({ pluginId, paneId }: { pluginId: string; paneId: str
         try {
           let value: unknown;
           if (m.path === '__on') {
-            const event = String(m.args?.[0]) as PluginEvent;
-            disposers.push(api.on(event, (payload) => post({ zpace: 'event', event, payload })));
+            const event = String(m.args?.[0]);
+            if (!PANE_EVENT.test(event)) disposers.push(api.on(event as PluginEvent, (payload) => post({ zpace: 'event', event, payload })));
             value = true;
           } else {
             const fn = resolve(api, m.path);
@@ -122,8 +217,34 @@ export function PluginPane({ pluginId, paneId }: { pluginId: string; paneId: str
       window.removeEventListener('message', onMessage);
       for (const d of disposers) d();
       if (registered) paneWindows.get(pluginId)?.delete(registered);
+      wv.suspend();
     };
-  }, [plugin, pluginId]);
+  }, [plugin, pluginId, paneId, floating, webviews]);
+
+  // the native webviews follow the page: the float moving, the tile resizing, the window changing
+  useEffect(() => {
+    const wv = webviews;
+    const el = frame.current;
+    const sync = () => wv.sync();
+    const ro = el ? new ResizeObserver(sync) : null;
+    if (el) ro!.observe(el);
+    window.addEventListener('resize', sync);
+    const key = floatKey(pluginId, paneId);
+    const offFloats = useFloats.subscribe((s) => {
+      sync();
+      // a closing float is animating out: its webviews go first
+      if (floating && !s.floats[key]) wv.setHostHidden(true);
+    });
+    const offLayout = useUI.subscribe((s, prev) => {
+      if (s.layout !== prev.layout || s.sidebarOpen !== prev.sidebarOpen || s.sidebarWidth !== prev.sidebarWidth) window.setTimeout(sync, 0);
+    });
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', sync);
+      offFloats();
+      offLayout();
+    };
+  }, [html, webviews, floating, pluginId, paneId]);
 
   // theme changes reach the page
   useEffect(() => {
@@ -135,9 +256,9 @@ export function PluginPane({ pluginId, paneId }: { pluginId: string; paneId: str
     if (html === null) return null;
     const dark = document.documentElement.classList.contains('dark');
     const vars = VARS.map((v) => `${v}: ${getComputedStyle(document.documentElement).getPropertyValue(v).trim()};`).join(' ');
-    const body = /<html[\s>]/i.test(html) ? html.replace(/<head([^>]*)>/i, `<head$1><script>${BRIDGE}</script>`) : `<!doctype html><html data-theme="${dark ? 'dark' : 'light'}"><head><meta charset="utf-8"><script>${BRIDGE};zpace.ready()</script><style>:root{${vars}} html,body{height:100%} body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text-primary);background:var(--background)}</style></head><body>${html}</body></html>`;
+    const body = /<html[\s>]/i.test(html) ? html.replace(/<head([^>]*)>/i, `<head$1><script>${BRIDGE}</script>`) : `<!doctype html><html data-theme="${dark ? 'dark' : 'light'}"><head><meta charset="utf-8"><script>${BRIDGE};zpace.ready()</script><style>:root{${vars}} html,body{height:100%} body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text-primary);background:${floating ? 'transparent' : 'var(--background)'}}</style></head><body>${html}</body></html>`;
     return body;
-  }, [html]);
+  }, [html, floating]);
 
   if (!plugin || (!spec && !adhoc)) {
     return (
@@ -155,5 +276,8 @@ export function PluginPane({ pluginId, paneId }: { pluginId: string; paneId: str
       </div>
     );
   }
-  return <iframe ref={frame} title={spec?.title ?? adhoc?.title ?? plugin.manifest.name} sandbox="allow-scripts allow-forms allow-popups allow-modals" srcDoc={srcDoc} className="h-full w-full border-0 bg-background" />;
+  return <iframe ref={(el) => {
+    frame.current = el;
+    webviews.attach(el);
+  }} title={spec?.title ?? adhoc?.title ?? plugin.manifest.name} sandbox="allow-scripts allow-forms allow-popups allow-modals" srcDoc={srcDoc} className={floating ? 'h-full w-full border-0 bg-transparent' : 'h-full w-full border-0 bg-background'} />;
 }

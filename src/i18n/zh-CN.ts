@@ -1509,4 +1509,7 @@ export const zhCN: Record<string, string> = {
   'Back with the next thing to say': '有新消息时恢复',
   'After': '等待',
   'Nothing unfolds except what needs an answer. Also in the island’s right-click menu.': '除了需要回应的内容，其他都不会展开。灵动岛的右键菜单里也有。',
+  'Close {name}': '关闭 {name}',
+  'This plugin needs Zpace {version} — update the app first.': '此插件需要 Zpace {version}，请先更新应用。',
+  'Zpace {version}+': 'Zpace {version}+',
 };

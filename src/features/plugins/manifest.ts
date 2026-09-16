@@ -15,7 +15,8 @@ import type { Trigger, Action } from '@/stores/automations';
  *   agents       ready-made Zpace agents (persona, rules, tools)
  *   skills       Claude Code skills, copied to ~/.claude/skills/<name>
  *   automations  automation presets (added disabled, per project on use)
- *   panes        HTML pages opened as workspace panes
+ *   panes        HTML pages opened as workspace panes — or, with `float`, as
+ *                floating windows over the workspace (a device preview)
  *   main         a script activated with the `zpace` API (see runtime.ts)
  */
 
@@ -37,8 +38,8 @@ export function registryBases(): string[] {
 export const registryRaw = () => registryBases()[0];
 
 /** What a script may touch; shown before install. */
-export type PluginPermission = 'commands' | 'panes' | 'events' | 'agents' | 'shell' | 'files' | 'network' | 'notifications' | 'clipboard' | 'notes' | 'media';
-export const PERMISSIONS: PluginPermission[] = ['commands', 'panes', 'events', 'agents', 'shell', 'files', 'network', 'notifications', 'clipboard', 'notes', 'media'];
+export type PluginPermission = 'commands' | 'panes' | 'events' | 'agents' | 'shell' | 'files' | 'network' | 'notifications' | 'clipboard' | 'notes' | 'media' | 'browser';
+export const PERMISSIONS: PluginPermission[] = ['commands', 'panes', 'events', 'agents', 'shell', 'files', 'network', 'notifications', 'clipboard', 'notes', 'media', 'browser'];
 
 export type PluginTag = 'theme' | 'agent' | 'skill' | 'command' | 'automation' | 'pane' | 'script' | 'tool';
 
@@ -55,11 +56,25 @@ export interface PluginCommandSpec {
   action: { kind: 'prompt'; text: string; session?: 'active' | 'new' } | { kind: 'shell'; command: string } | { kind: 'url'; url: string } | { kind: 'pane'; pane: string } | { kind: 'script'; fn: string };
 }
 
+/**
+ * A pane that opens as a floating window over the workspace instead of a
+ * tile: the page fills it edge to edge on a transparent background and
+ * draws its own chrome, moving and resizing itself through `zpace.float`.
+ * Its position and size are remembered.
+ */
+export interface PluginFloatSpec {
+  width: number;
+  height: number;
+  minWidth?: number;
+  minHeight?: number;
+}
+
 export interface PluginPaneSpec {
   id: string;
   title: string;
   /** HTML file in the plugin folder. */
   entry: string;
+  float?: PluginFloatSpec;
 }
 
 export interface PluginSkillSpec {
@@ -142,7 +157,10 @@ export function validateManifest(m: unknown): string[] {
   const c = p.contributes ?? {};
   for (const cmd of c.commands ?? []) if (!cmd.id || !cmd.title || !cmd.action?.kind) out.push(`commands: "${cmd.id ?? '?'}" needs id, title and action`);
   for (const th of c.themes ?? []) if (!th.id || !th.label || !th.appearance) out.push(`themes: "${th.id ?? '?'}" needs id, label and appearance`);
-  for (const pane of c.panes ?? []) if (!pane.id || !pane.title || !pane.entry) out.push(`panes: "${pane.id ?? '?'}" needs id, title and entry`);
+  for (const pane of c.panes ?? []) {
+    if (!pane.id || !pane.title || !pane.entry) out.push(`panes: "${pane.id ?? '?'}" needs id, title and entry`);
+    if (pane.float && !(pane.float.width > 0 && pane.float.height > 0)) out.push(`panes: "${pane.id ?? '?'}" float needs a width and a height`);
+  }
   for (const sk of c.skills ?? []) if (!sk.name || !sk.path) out.push(`skills: "${sk.name ?? '?'}" needs name and path`);
   return out;
 }

@@ -1509,4 +1509,7 @@ export const ko: Record<string, string> = {
   'Back with the next thing to say': '다음 알림과 함께 돌아옵니다',
   'After': '경과 후',
   'Nothing unfolds except what needs an answer. Also in the island’s right-click menu.': '답이 필요한 것 외에는 아무것도 펼치지 않습니다. 아일랜드의 우클릭 메뉴에도 있습니다.',
+  'Close {name}': '{name} 닫기',
+  'This plugin needs Zpace {version} — update the app first.': '이 플러그인은 Zpace {version}이(가) 필요합니다. 먼저 앱을 업데이트하세요.',
+  'Zpace {version}+': 'Zpace {version}+',
 };

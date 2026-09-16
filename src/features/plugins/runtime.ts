@@ -15,6 +15,7 @@ import { openUrl, pathExists, readTextFile, writeTextFile, joinPath } from '@/na
 import { mediaControl, mediaNow, type MediaNow } from '@/native/media';
 import { useNotes } from '@/stores/notes';
 import { useIslandChips, type IslandChip } from '@/features/island/chips';
+import { useFloats, floatKey } from '@/stores/floats';
 import { uid } from '@/lib/id';
 import { isWindows } from '@/lib/platform';
 import { t } from '@/i18n';
@@ -44,7 +45,14 @@ export interface ZpaceApi {
     update: (id: string, card: IslandCard) => void;
     hide: (id: string) => void;
   };
-  panes: { open: (paneId: string) => void; openHtml: (title: string, html: string) => void; postMessage: (message: unknown) => void };
+  panes: {
+    /** A declared pane: as a tile, or as a float when it says so. */
+    open: (paneId: string) => void;
+    /** Closes the pane's float (tiles stay: the user owns the layout). */
+    close: (paneId: string) => void;
+    openHtml: (title: string, html: string) => void;
+    postMessage: (message: unknown) => void;
+  };
   notes: {
     list: (opts?: { project?: string }) => Array<{ id: string; title: string; kind: 'text' | 'board'; tags: string[]; projectId?: string; updatedAt: number }>;
     read: (id: string) => string | null;
@@ -181,6 +189,7 @@ export function deactivate(id: string): void {
   }
   active.delete(id);
   scriptCommands.delete(id);
+  useFloats.getState().closePlugin(id);
   bump();
 }
 
@@ -239,7 +248,8 @@ function emit(event: PluginEvent, payload: unknown) {
 /*  The API                                                            */
 /* ------------------------------------------------------------------ */
 
-function need(p: InstalledPlugin, perm: PluginPermission) {
+/** Throws unless the manifest declared the permission — every API method starts with it. */
+export function need(p: InstalledPlugin, perm: PluginPermission) {
   if (!(p.manifest.permissions ?? []).includes(perm)) throw new Error(`${p.manifest.name}: permission "${perm}" not declared in plugin.json`);
 }
 
@@ -314,6 +324,10 @@ export function apiFor(p: InstalledPlugin): ZpaceApi {
       open: (paneId) => {
         need(p, 'panes');
         openPane({ kind: 'plugin', pluginId: p.id, paneId });
+      },
+      close: (paneId) => {
+        need(p, 'panes');
+        useFloats.getState().close(floatKey(p.id, paneId));
       },
       openHtml: (title, html) => {
         need(p, 'panes');
@@ -480,8 +494,13 @@ function cardExtras(card: IslandCard) {
   return { rich, icon: card.image ? createElement('img', { src: card.image, alt: '' }) : undefined };
 }
 
-/** Open (or focus) a plugin pane in the workspace. */
+/** Open (or focus) a plugin pane: a float when the manifest says so, a tile in the workspace otherwise. */
 export function openPane(content: Extract<PaneContent, { kind: 'plugin' }>) {
+  const float = usePlugins.getState().installed[content.pluginId]?.manifest.contributes?.panes?.find((x) => x.id === content.paneId)?.float;
+  if (float) {
+    useFloats.getState().open(content.pluginId, content.paneId, float);
+    return;
+  }
   const ui = useUI.getState();
   const leaves = collectLeaves(ui.layout);
   const already = leaves.find((l) => l.content.kind === 'plugin' && l.content.pluginId === content.pluginId && l.content.paneId === content.paneId);

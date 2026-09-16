@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/Tooltip';
 import { TitleBar } from '@/components/layout/TitleBar';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Workspace } from '@/components/layout/Workspace';
+import { FloatLayer } from '@/features/plugins/FloatLayer';
 import { Toaster } from '@/features/notifications/Toaster';
 import { CommandPalette } from '@/features/palette/CommandPalette';
 import { GlobalSearch } from '@/features/search/GlobalSearch';
@@ -76,12 +77,15 @@ export function App() {
           <ErrorBoundary compact label={t('Title bar')}>
             <TitleBar key={`tb-${language}`} />
           </ErrorBoundary>
-          <div className="flex min-h-0 flex-1">
+          <div className="relative flex min-h-0 flex-1">
             <ErrorBoundary compact label={t('Sidebar')}>
               <Sidebar key={`sb-${language}`} />
             </ErrorBoundary>
             <ErrorBoundary label={t('Workspace')}>
               <Workspace />
+            </ErrorBoundary>
+            <ErrorBoundary compact label={t('Plugins')}>
+              <FloatLayer />
             </ErrorBoundary>
           </div>
           <Onboarding key={`ob-${language}`} />
