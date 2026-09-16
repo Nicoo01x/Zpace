@@ -10,7 +10,7 @@
 
 use serde::Serialize;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, State};
@@ -153,6 +153,7 @@ mod win {
     use crate::commands::island::LABEL;
     use crate::commands::media::{snapshot, ArtCache, MediaNow};
     use std::collections::{HashMap, HashSet};
+    use std::sync::atomic::AtomicU64;
     use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
     use std::time::{Duration, Instant};
     use tauri::Emitter;

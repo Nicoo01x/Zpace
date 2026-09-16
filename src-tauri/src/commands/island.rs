@@ -21,9 +21,8 @@ pub async fn island_open(app: AppHandle) -> Result<(), String> {
     let handle = app.clone();
     // Window creation belongs to the main thread on every platform.
     app.run_on_main_thread(move || {
-        let built = WebviewWindowBuilder::new(&handle, LABEL, WebviewUrl::App("island.html".into()))
+        let builder = WebviewWindowBuilder::new(&handle, LABEL, WebviewUrl::App("island.html".into()))
             .title("Zpace island")
-            .transparent(true)
             .decorations(false)
             .shadow(false)
             .always_on_top(true)
@@ -35,7 +34,9 @@ pub async fn island_open(app: AppHandle) -> Result<(), String> {
             .focused(false)
             .visible(false)
             .inner_size(360.0, 60.0)
-            .build();
+            // On macOS a transparent window needs Tauri's private-API feature (on in Cargo.toml and tauri.conf.json).
+            .transparent(true);
+        let built = builder.build();
         let _ = tx.send(match built {
             Ok(w) => {
                 no_activate(&w);
