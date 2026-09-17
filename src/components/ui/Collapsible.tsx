@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { easings, living, springs } from '@/lib/motion';
+import { easings, living, springs, unfold } from '@/lib/motion';
 
 export interface CollapsibleProps {
   open: boolean;
@@ -33,7 +33,7 @@ export function Collapsible({ open, children, className, id }: CollapsibleProps)
           style={{ overflow: 'hidden' }}
           className={className}
         >
-          <motion.div initial={reduced ? false : { y: living.enter.y, scale: living.enter.scale }} animate={{ y: 0, scale: 1 }} exit={reduced ? undefined : { y: living.exit.y, scale: living.exit.scale }} transition={springs.living}>
+          <motion.div initial={reduced ? false : { y: living.enter.y, scale: living.enter.scale }} animate={{ y: 0, scale: 1 }} exit={reduced ? undefined : { scale: living.exit.scale, transition: unfold.out }} transition={unfold.in}>
             {children}
           </motion.div>
         </motion.div>

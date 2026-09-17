@@ -31,6 +31,22 @@ export const easings = {
   soft: [0.37, 0.35, 0, 1] as const,
 };
 
+/**
+ * The card's curves (the drag-to-dismiss dialog), for everything that unfolds —
+ * menus, popovers, the sidebar's expanders, a form's fields: in over .34 s on
+ * power3.out from scale .94 and 16 px below, out in .18 s on power2.in. The
+ * dialog itself runs them in GSAP; here they are the same numbers as beziers.
+ */
+export const unfold = {
+  /** GSAP's power3.out. */
+  in: { duration: 0.34, ease: [0.215, 0.61, 0.355, 1] } as Transition,
+  /** GSAP's power2.in. */
+  out: { duration: 0.18, ease: [0.55, 0.085, 0.68, 0.53] } as Transition,
+  from: { opacity: 0, scale: 0.94, y: 16 },
+  to: { opacity: 1, scale: 1, y: 0 },
+  gone: { opacity: 0, scale: 0.94 },
+} as const;
+
 export const springs = {
   /** Snappy, no visible overshoot — hover/press, small popovers. */
   snappy: { type: 'spring', stiffness: 640, damping: 42, mass: 0.8 } as Transition,
@@ -54,16 +70,16 @@ export const springs = {
  * itself moves with `layout` and `springs.living`, so both read as one motion.
  */
 export const living = {
-  /** New content: fades in while it arrives from slightly above, a touch smaller. */
-  enter: { opacity: 0, y: -4, scale: 0.985 },
-  present: { opacity: 1, y: 0, scale: 1 },
-  /** Leaving content: fades a beat before the container closes over it. */
-  exit: { opacity: 0, y: -3, scale: 0.99, transition: { duration: 0.2, ease: easings.inOut } },
-  transition: { default: { type: 'spring', stiffness: 420, damping: 34, mass: 0.8 }, opacity: { duration: 0.22, ease: easings.out } } as Transition,
-  /** A field or row inside a form that just opened: staggered by index. */
-  field: (i: number): Transition => ({ default: { type: 'spring', stiffness: 460, damping: 34, mass: 0.8 }, opacity: { duration: 0.16, ease: easings.out }, delay: 0.02 * i }),
-  fieldFrom: { opacity: 0, y: -3 },
-  fieldTo: { opacity: 1, y: 0 },
+  /** New content: the card's entrance — rises 16 px from scale .94 while it fades in. */
+  enter: unfold.from,
+  present: unfold.to,
+  /** Leaving content: the card's exit, a beat before the container closes over it. */
+  exit: { ...unfold.gone, transition: unfold.out },
+  transition: { default: unfold.in, layout: { type: 'spring', stiffness: 420, damping: 34, mass: 0.8 } } as Transition,
+  /** A field or row inside a form that just opened: the same entrance, staggered by index. */
+  field: (i: number): Transition => ({ ...unfold.in, delay: 0.02 * i }),
+  fieldFrom: unfold.from,
+  fieldTo: unfold.to,
 } as const;
 
 export const tweens = {
@@ -77,18 +93,14 @@ export const tweens = {
 /*  Shared variants                                                  */
 /* ---------------------------------------------------------------- */
 
-/** Popover / dropdown: scale from the trigger origin with a short blur. */
+/** Popover / dropdown / menu: the card's entrance and exit, from the trigger origin. */
 export const popoverVariants = {
-  hidden: { opacity: 0, scale: 0.94, filter: 'blur(4px)', y: -4 },
-  visible: { opacity: 1, scale: 1, filter: 'blur(0px)', y: 0 },
-  exit: { opacity: 0, scale: 0.96, filter: 'blur(3px)', y: -2, transition: { duration: 0.14, ease: easings.out } },
+  hidden: unfold.from,
+  visible: unfold.to,
+  exit: { ...unfold.gone, transition: unfold.out },
 };
 
-export const popoverTransition = {
-  default: springs.pop,
-  opacity: tweens.fadeFast,
-  filter: tweens.fadeFast,
-};
+export const popoverTransition = unfold.in;
 
 /** Tooltip: minimal, no blur. */
 export const tooltipVariants = {

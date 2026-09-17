@@ -1,21 +1,34 @@
-import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { Dialog as RD } from 'radix-ui';
-import { AnimatePresence, animate, motion, useReducedMotion } from 'motion/react';
+import { useReducedMotion } from 'motion/react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { Draggable } from 'gsap/Draggable';
+import { InertiaPlugin } from 'gsap/InertiaPlugin';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { consumeOrigin, easings, overlayVariants, springs, type OriginRect } from '@/lib/motion';
 import { IconButton } from './IconButton';
 import { t } from '@/i18n';
 
+gsap.registerPlugin(useGSAP, Draggable, InertiaPlugin);
+
 /**
- * Dialog — the pretty-modal recipe on top of Radix:
- *   open : FLIP from the element that was clicked (position + uniform scale),
- *          content blurs in from 8px, overlay dims with a soft backdrop blur.
- *   close: travels back to its origin while blurring out and fading, and its
- *          radius grows — the modal is "absorbed" by the control that opened it.
+ * Dialog — Radix for the semantics (portal, focus, Escape, outside click),
+ * GSAP for the motion, which is the drag-to-dismiss card and nothing else:
+ *   open : overlay 0→1 in .22 power2.out; the card scale .94→1, y 16→0,
+ *          opacity 0→1 in .34 power3.out.
+ *   drag : grab it anywhere — it follows the pointer 1:1 with the
+ *          transform-origin at the point you touched, and shrinks to a
+ *          thumbnail of itself as it leaves the centre (0→1, 220→.75,
+ *          350→.5, 500→.12), dims past 350 and blurs past 220. Let go far
+ *          away or throw it and it flies off in that direction and closes;
+ *          let go near and it springs back (elastic.out(0.75, 0.55), .58).
+ *   close: (×, Escape, overlay) scale .94, opacity 0 in .18 power2.in.
+ * Only transform, opacity and filter move; the size is fixed by CSS and the
+ * card carries no CSS transition. Reduced motion: fades, no drag.
  */
 
-const OpenCtx = createContext<{ open: boolean; gen: number }>({ open: false, gen: 0 });
+const OpenCtx = createContext<{ open: boolean; gen: number; requestClose: () => void }>({ open: false, gen: 0, requestClose: () => void 0 });
 
 export interface DialogProps {
   open: boolean;
@@ -25,15 +38,15 @@ export interface DialogProps {
 
 export function Dialog({ open, onOpenChange, children }: DialogProps) {
   // Each opening gets a new generation so re-opening while the previous
-  // instance is still animating out mounts a fresh content instead of
-  // resurrecting the exiting one (which would leave the overlay stuck).
+  // instance is still animating out mounts a fresh card instead of
+  // resurrecting the exiting one.
   const [gen, setGen] = useState(0);
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) setGen((g) => g + 1);
   }
-  const ctx = useMemo(() => ({ open, gen }), [open, gen]);
+  const ctx = useMemo(() => ({ open, gen, requestClose: () => onOpenChange(false) }), [open, gen, onOpenChange]);
   return (
     <RD.Root open={open} onOpenChange={onOpenChange}>
       <OpenCtx.Provider value={ctx}>{children}</OpenCtx.Provider>
@@ -66,152 +79,198 @@ export interface DialogContentProps extends Omit<ComponentProps<typeof RD.Conten
   children: ReactNode;
 }
 
-interface MorphState {
-  x: number;
-  y: number;
-  scale: number;
-  radius: number;
+/* ---------- the physics, as given: distance from rest → scale, linear between the stops ---------- */
+
+const SCALE_STOPS: ReadonlyArray<readonly [distance: number, scale: number]> = [
+  [0, 1],
+  [220, 0.75],
+  [350, 0.5],
+  [500, 0.12],
+];
+
+function mapDistanceToScale(distance: number): number {
+  for (let i = 1; i < SCALE_STOPS.length; i++) {
+    const [d0, s0] = SCALE_STOPS[i - 1];
+    const [d1, s1] = SCALE_STOPS[i];
+    if (distance <= d1) return gsap.utils.mapRange(d0, d1, s0, s1, distance);
+  }
+  return SCALE_STOPS[SCALE_STOPS.length - 1][1];
 }
 
-export function DialogContent({
-  size = 'md',
-  className,
-  hideClose,
-  placement = 'center',
-  overlay = 'blur',
-  children,
-  ...rest
-}: DialogContentProps) {
-  const { open, gen } = useContext(OpenCtx);
+/** Where a drag must not start: controls (Draggable's own list) and anything the pointer selects or edits. */
+const NOT_A_HANDLE = 'input, textarea, select, button, a, [contenteditable], .selectable, .monaco-editor, .xterm, [data-no-drag]';
+
+export function DialogContent({ size = 'md', className, hideClose, placement = 'center', overlay = 'blur', children, ...rest }: DialogContentProps) {
+  const { open, gen, requestClose } = useContext(OpenCtx);
+  // the card stays in the DOM through its exit; a new generation is a new card
+  const [shown, setShown] = useState<number | null>(open ? gen : null);
+  if (open && shown !== gen) setShown(gen);
+  if (shown === null) return null;
+  const mine = shown;
   return (
-    <AnimatePresence>
-      {open && (
-        <RD.Portal forceMount key={gen}>
-          <RD.Overlay asChild forceMount>
-            <motion.div
-              variants={overlayVariants}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              transition={{ duration: 0.22, ease: easings.out }}
-              className={cn(
-                'fixed inset-0 z-[950]',
-                overlay === 'blur' && 'bg-overlay backdrop-blur-[6px]',
-                overlay === 'dim' && 'bg-overlay',
-              )}
-            />
-          </RD.Overlay>
-          <div
-            className={cn(
-              'pointer-events-none fixed inset-0 z-[951] flex justify-center p-8',
-              placement === 'center' ? 'items-center' : 'items-start pt-[14vh]',
-            )}
-          >
-            <MorphingContent size={size} className={className} hideClose={hideClose} {...rest}>
-              {children}
-            </MorphingContent>
-          </div>
-        </RD.Portal>
-      )}
-    </AnimatePresence>
+    <RD.Portal forceMount key={mine}>
+      <Card size={size} className={className} hideClose={hideClose} placement={placement} overlay={overlay} open={open && mine === gen} requestClose={requestClose} onGone={() => setShown((s) => (s === mine ? null : s))} {...rest}>
+        {children}
+      </Card>
+    </RD.Portal>
   );
 }
 
-function MorphingContent({
+function Card({
   size,
   className,
   hideClose,
+  placement,
+  overlay,
+  open,
+  requestClose,
+  onGone,
   children,
   ...rest
-}: Omit<DialogContentProps, 'placement' | 'overlay'> & { size: DialogSize }) {
-  const ref = useRef<HTMLDivElement>(null);
+}: Omit<DialogContentProps, 'size' | 'placement' | 'overlay'> & { size: DialogSize; placement: 'center' | 'top'; overlay: 'dim' | 'blur' | 'none'; open: boolean; requestClose: () => void; onGone: () => void }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
-  const originRef = useRef<OriginRect | null>(null);
-  const [morph, setMorph] = useState<MorphState>({ x: 0, y: 0, scale: 0.94, radius: 14 });
+  // the transform-origin in force, in % — a grab mid-bounce compensates for moving it
+  const origin = useRef({ x: 50, y: 50 });
+  // a drag that decided to close: the open=false that follows must not animate again
+  const flying = useRef(false);
+  const gone = useRef(onGone);
+  const close = useRef(requestClose);
+  useEffect(() => {
+    gone.current = onGone;
+    close.current = requestClose;
+  });
 
-  // Capture the origin synchronously on first render.
-  if (originRef.current === null) originRef.current = consumeOrigin() ?? { x: NaN, y: NaN, width: 0, height: 0, radius: 0 };
+  useGSAP(
+    () => {
+      const ov = overlayRef.current;
+      const card = cardRef.current;
+      if (!ov || !card) return;
+      gsap.set(card, { x: 0, y: 0, transformOrigin: '50% 50%', filter: 'blur(0px)' });
+      if (reduced) {
+        gsap.fromTo(ov, { opacity: 0 }, { opacity: 1, duration: 0.18 });
+        gsap.fromTo(card, { opacity: 0 }, { opacity: 1, duration: 0.18 });
+        return;
+      }
+      gsap.fromTo(ov, { opacity: 0 }, { opacity: 1, duration: 0.22, ease: 'power2.out' });
+      gsap.fromTo(card, { scale: 0.94, opacity: 0, y: 16 }, { scale: 1, opacity: 1, y: 0, duration: 0.34, ease: 'power3.out' });
 
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const origin = originRef.current;
-    const r = el.getBoundingClientRect();
-    const hasOrigin = origin && Number.isFinite(origin.x) && origin.width > 0;
-    const from: MorphState = hasOrigin
-      ? {
-          x: origin.x + origin.width / 2 - (r.left + r.width / 2),
-          y: origin.y + origin.height / 2 - (r.top + r.height / 2),
-          scale: Math.min(0.9, Math.max(0.18, Math.max(origin.width / r.width, origin.height / r.height))),
-          radius: Math.max(origin.radius, 14),
-        }
-      : { x: 0, y: 0, scale: 0.94, radius: 14 };
-    setMorph(from);
+      // Draggable has no getVelocity(): InertiaPlugin tracks x/y for it once registered, even with inertia off.
+      const velocity = (axis: 'x' | 'y') => InertiaPlugin.getVelocity(card, axis);
+      const [drag] = Draggable.create(card, {
+        type: 'x,y',
+        inertia: false,
+        zIndexBoost: false,
+        // gsap 3.15 only spares clickables when this is an explicit false — undefined drags them too
+        dragClickables: false,
+        cursor: 'grab',
+        activeCursor: 'grabbing',
+        clickableTest: (el: Element) => !!el.closest(NOT_A_HANDLE),
 
+        onPress(this: Draggable, event: PointerEvent | TouchEvent) {
+          gsap.killTweensOf([card, ov]);
+          gsap.to(ov, { opacity: 1, duration: 0.15 });
+          // the transform-origin at the exact point under the pointer
+          const rect = card.getBoundingClientRect();
+          const clientX = 'clientX' in event ? event.clientX : this.pointerX - window.scrollX;
+          const clientY = 'clientY' in event ? event.clientY : this.pointerY - window.scrollY;
+          const ox = ((clientX - rect.left) / rect.width) * 100;
+          const oy = ((clientY - rect.top) / rect.height) * 100;
+          // grabbed mid-bounce (scale ≠ 1): moving the origin would make it jump, so x/y absorb the difference
+          const scale = gsap.getProperty(card, 'scale') as number;
+          const dx = ((ox - origin.current.x) / 100) * (rect.width / scale) * (1 - scale);
+          const dy = ((oy - origin.current.y) / 100) * (rect.height / scale) * (1 - scale);
+          origin.current = { x: ox, y: oy };
+          gsap.set(card, { transformOrigin: `${ox}% ${oy}%`, x: this.x - dx, y: this.y - dy });
+          this.update();
+        },
+
+        onDrag(this: Draggable) {
+          const distance = Math.hypot(this.x, this.y);
+          gsap.set(card, {
+            x: this.x,
+            y: this.y,
+            scale: mapDistanceToScale(distance),
+            opacity: gsap.utils.interpolate(1, 0.86, gsap.utils.clamp(0, 1, (distance - 350) / 180)),
+            filter: `blur(${gsap.utils.interpolate(0, 3, gsap.utils.clamp(0, 1, (distance - 220) / 280))}px)`,
+          });
+        },
+
+        onDragEnd(this: Draggable) {
+          const distance = Math.hypot(this.x, this.y);
+          const scale = mapDistanceToScale(distance);
+          const vx = velocity('x');
+          const vy = velocity('y');
+          const speed = Math.hypot(vx, vy);
+          if (scale <= 0.35 || distance > 430 || (speed > 900 && distance > 260)) {
+            flying.current = true;
+            gsap.to(card, {
+              x: this.x + vx * 0.12,
+              y: this.y + vy * 0.12,
+              scale: 0.08,
+              opacity: 0,
+              duration: 0.18,
+              ease: 'power2.in',
+              onComplete: () => {
+                close.current();
+                gone.current();
+              },
+            });
+            gsap.to(ov, { opacity: 0, duration: 0.18, ease: 'power2.out' });
+            return;
+          }
+          gsap.to(card, { x: 0, y: 0, scale: 1, opacity: 1, filter: 'blur(0px)', duration: 0.58, ease: 'elastic.out(0.75, 0.55)' });
+        },
+      });
+      return () => drag.kill();
+    },
+    { scope: cardRef, dependencies: [reduced] },
+  );
+
+  // Closed by ×, Escape, the overlay or the app: the card leaves in place.
+  useEffect(() => {
+    if (open) return;
+    const ov = overlayRef.current;
+    const card = cardRef.current;
+    if (!ov || !card || flying.current) return;
+    gsap.killTweensOf([ov, card]);
     if (reduced) {
-      el.style.opacity = '1';
+      gsap.to([ov, card], { opacity: 0, duration: 0.12, onComplete: () => gone.current() });
       return;
     }
-    const controls = animate(
-      el,
-      {
-        x: [from.x, 0],
-        y: [from.y, 0],
-        scale: [from.scale, 1],
-        opacity: [0, 1],
-        filter: ['blur(8px)', 'blur(0px)'],
-        borderRadius: [`${from.radius}px`, '14px'],
-      },
-      {
-        ...(springs.modal as object),
-        opacity: { duration: 0.18, ease: easings.out },
-        filter: { duration: 0.38, ease: easings.soft },
-        borderRadius: { duration: 0.32, ease: easings.soft },
-      },
-    );
-    return () => controls.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    gsap.to(card, { scale: 0.94, opacity: 0, duration: 0.18, ease: 'power2.in', onComplete: () => gone.current() });
+    gsap.to(ov, { opacity: 0, duration: 0.18, ease: 'power2.out' });
+  }, [open, reduced]);
 
   return (
-    <RD.Content asChild forceMount {...rest}>
-      <motion.div
-        ref={ref}
-        initial={false}
-        style={{ opacity: 0, transformOrigin: 'center center' }}
-        exit={
-          reduced
-            ? { opacity: 0, transition: { duration: 0.12 } }
-            : {
-                x: morph.x * 0.85,
-                y: morph.y * 0.85,
-                scale: Math.max(morph.scale, 0.55),
-                opacity: 0,
-                filter: 'blur(18px)',
-                borderRadius: `${Math.max(morph.radius, 28)}px`,
-                transition: {
-                  default: { duration: 0.3, ease: easings.spring },
-                  opacity: { duration: 0.26, ease: easings.out },
-                  filter: { duration: 0.26, ease: easings.soft },
-                },
-              }
-        }
-        className={cn(
-          'pointer-events-auto relative flex max-h-[calc(100vh-64px)] max-w-[calc(100vw-64px)] flex-col overflow-hidden rounded-[14px] bg-surface-raised text-primary shadow-window outline-none',
-          sizes[size],
-          className,
-        )}
-      >
-        {children}
-        {!hideClose ? (
-          <RD.Close asChild>
-            <IconButton label={t('Close')} tooltip={false} size="sm" className="absolute right-2.5 top-2.5">
-              <X />
-            </IconButton>
-          </RD.Close>
-        ) : null}
-      </motion.div>
-    </RD.Content>
+    <>
+      <RD.Overlay asChild forceMount>
+        <div ref={overlayRef} className={cn('fixed inset-0 z-[950] bg-[rgba(0,0,0,0.11)]', overlay === 'blur' && 'backdrop-blur-[6px]', overlay === 'none' && 'bg-transparent')} style={{ opacity: 0 }} />
+      </RD.Overlay>
+      <div className={cn('pointer-events-none fixed inset-0 z-[951] flex justify-center p-8', placement === 'center' ? 'items-center' : 'items-start pt-[14vh]')}>
+        <RD.Content asChild forceMount {...rest}>
+          <div
+            ref={cardRef}
+            style={{ opacity: 0 }}
+            className={cn(
+              'pointer-events-auto relative flex max-h-[calc(100vh-64px)] max-w-[calc(100vw-64px)] flex-col overflow-hidden rounded-[14px] bg-surface-raised text-primary shadow-window outline-none will-change-transform',
+              sizes[size],
+              className,
+            )}
+          >
+            {children}
+            {!hideClose ? (
+              <RD.Close asChild>
+                <IconButton label={t('Close')} tooltip={false} size="sm" className="absolute right-2.5 top-2.5">
+                  <X />
+                </IconButton>
+              </RD.Close>
+            ) : null}
+          </div>
+        </RD.Content>
+      </div>
+    </>
   );
 }
 
