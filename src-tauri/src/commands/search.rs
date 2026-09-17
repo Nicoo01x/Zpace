@@ -144,7 +144,7 @@ fn collect(root: &Path, dir: &Path, out: &mut Vec<PathBuf>, limit: usize) {
 
 /// Search `query` under `root`. `regex` switches from literal to pattern; `case_sensitive` off by default.
 /// `include` is an optional comma-separated list of extensions or glob-ish suffixes ("ts,tsx" / ".md").
-#[tauri::command]
+#[tauri::command(async)]
 pub fn search_text(root: String, query: String, regex: Option<bool>, case_sensitive: Option<bool>, include: Option<String>, max_hits: Option<usize>, budget_ms: Option<u64>) -> Result<SearchResult, String> {
     if query.trim().is_empty() {
         return Ok(SearchResult { hits: vec![], files_scanned: 0, truncated: false });

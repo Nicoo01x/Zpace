@@ -210,7 +210,7 @@ fn scan_plugins(claude_dir: &Path, out: &mut AgentAssets) {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn scan_agent_assets(project: Option<String>) -> AgentAssets {
     let mut out = AgentAssets::default();
     if let Some(p) = project.as_deref().filter(|p| !p.is_empty()) {

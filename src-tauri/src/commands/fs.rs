@@ -53,7 +53,7 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<String>, limit: usize) {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn list_files(root: String, limit: Option<usize>) -> Vec<String> {
     let mut out = Vec::new();
     walk(Path::new(&root), Path::new(&root), &mut out, limit.unwrap_or(20_000));
@@ -67,7 +67,7 @@ pub struct DirEntry {
     pub is_dir: bool,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn read_dir(path: String) -> Result<Vec<DirEntry>, String> {
     let entries = std::fs::read_dir(&path).map_err(|e| e.to_string())?;
     let mut out: Vec<DirEntry> = entries
@@ -81,7 +81,7 @@ pub fn read_dir(path: String) -> Result<Vec<DirEntry>, String> {
     Ok(out)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn read_text_file(path: String, max_bytes: Option<u64>) -> Result<String, String> {
     let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
     let cap = max_bytes.unwrap_or(2_000_000);
@@ -97,7 +97,7 @@ pub fn read_text_file(path: String, max_bytes: Option<u64>) -> Result<String, St
 
 /// The first `max_bytes` of any file, base64-encoded, plus its size — the hex view of
 /// binaries the editor cannot show.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn read_file_head(path: String, max_bytes: Option<usize>) -> Result<FileHead, String> {
     use base64::Engine;
     use std::io::Read;
@@ -117,13 +117,13 @@ pub struct FileHead {
     pub base64: String,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn write_text_file(path: String, contents: String) -> Result<(), String> {
     std::fs::write(&path, contents).map_err(|e| e.to_string())
 }
 
 /// Copy a file (parents of the target created; an existing target is replaced) — a custom agent's library takes copies.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn copy_file(from: String, to: String) -> Result<u64, String> {
     let target = Path::new(&to);
     if let Some(parent) = target.parent() {
@@ -133,7 +133,7 @@ pub fn copy_file(from: String, to: String) -> Result<u64, String> {
 }
 
 /// New empty file (parents created); refuses to overwrite.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_file(path: String) -> Result<(), String> {
     let p = Path::new(&path);
     if p.exists() {
@@ -145,7 +145,7 @@ pub fn create_file(path: String) -> Result<(), String> {
     std::fs::write(p, b"").map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_dir(path: String) -> Result<(), String> {
     if Path::new(&path).exists() {
         return Err("Already exists".into());
@@ -154,7 +154,7 @@ pub fn create_dir(path: String) -> Result<(), String> {
 }
 
 /// Rename / move within the file system; refuses to clobber an existing target.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn rename_path(from: String, to: String) -> Result<(), String> {
     if Path::new(&to).exists() && from.to_lowercase() != to.to_lowercase() {
         return Err("A file with that name already exists".into());
@@ -163,12 +163,12 @@ pub fn rename_path(from: String, to: String) -> Result<(), String> {
 }
 
 /// Send to the Recycle Bin / Trash — never a hard delete.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn trash_path(path: String) -> Result<(), String> {
     trash::delete(&path).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn path_exists(path: String) -> bool {
     Path::new(&path).exists()
 }

@@ -249,7 +249,7 @@ fn detect_shells(git: &ToolCheck, wsl: &WslInfo) -> Vec<ShellInfo> {
     out
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn detect_environment() -> EnvironmentReport {
     let platform = if cfg!(windows) {
         "windows"

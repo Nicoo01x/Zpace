@@ -1,6 +1,10 @@
 //! Git integration through the `git` CLI. Deliberately small and honest:
 //! status, log, branches, stage/unstage/discard, commit, push, pull, fetch,
 //! checkout, clone and per-file diff material.
+//!
+//! Every command here is `async`: a plain command runs on the main thread,
+//! and a fetch waiting on the network (or a status on a folder OneDrive is
+//! still syncing) would freeze the window for as long as git takes.
 
 use serde::Serialize;
 
@@ -11,6 +15,9 @@ fn git(path: &str, args: &[&str]) -> Result<String, String> {
         .arg("-C")
         .arg(path)
         .args(args)
+        // never wait on a credential prompt nobody can see (a terminal one, or the credential manager's window)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GCM_INTERACTIVE", "never")
         .output()
         .map_err(|e| format!("git not available: {e}"))?;
     if output.status.success() {
@@ -31,7 +38,7 @@ pub struct GitSummary {
     pub is_repo: bool,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_summary(path: String) -> GitSummary {
     let Ok(branch) = git(&path, &["rev-parse", "--abbrev-ref", "HEAD"]) else {
         return GitSummary { branch: String::new(), dirty: 0, ahead: 0, behind: 0, is_repo: false };
@@ -54,7 +61,7 @@ pub struct FileStatus {
     pub staged: bool,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_status_files(path: String) -> Result<Vec<FileStatus>, String> {
     let out = git(&path, &["status", "--porcelain", "--untracked-files=all"])?;
     let mut files = Vec::new();
@@ -89,7 +96,7 @@ pub struct Commit {
     pub date: String,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_log(path: String, limit: Option<u32>) -> Result<Vec<Commit>, String> {
     let n = limit.unwrap_or(30).to_string();
     let out = git(&path, &["log", "-n", &n, "--pretty=format:%h%x1f%s%x1f%an%x1f%ae%x1f%cr"])?;
@@ -121,7 +128,7 @@ pub struct Branch {
     pub date: String,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_branches(path: String) -> Result<Vec<Branch>, String> {
     let out = git(
         &path,
@@ -167,7 +174,7 @@ fn git_remote_names(path: &str) -> Vec<String> {
     git(path, &["remote"]).map(|s| s.lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect()).unwrap_or_default()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_checkout(path: String, branch: String, create: Option<bool>) -> Result<String, String> {
     if create.unwrap_or(false) {
         git(&path, &["checkout", "-b", &branch])
@@ -180,32 +187,32 @@ pub fn git_checkout(path: String, branch: String, create: Option<bool>) -> Resul
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_delete_branch(path: String, branch: String) -> Result<String, String> {
     git(&path, &["branch", "-d", &branch])
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_fetch(path: String) -> Result<String, String> {
     git(&path, &["fetch", "--prune"])
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_stage(path: String, file: String) -> Result<(), String> {
     git(&path, &["add", "--", &file]).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_stage_all(path: String) -> Result<(), String> {
     git(&path, &["add", "-A"]).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_unstage(path: String, file: String) -> Result<(), String> {
     git(&path, &["restore", "--staged", "--", &file]).map(|_| ())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_discard(path: String, file: String) -> Result<(), String> {
     // Tracked → restore working tree; untracked → remove.
     if git(&path, &["ls-files", "--error-unmatch", "--", &file]).is_ok() {
@@ -215,12 +222,12 @@ pub fn git_discard(path: String, file: String) -> Result<(), String> {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_commit(path: String, message: String) -> Result<String, String> {
     git(&path, &["commit", "-m", &message])
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_push(path: String) -> Result<String, String> {
     // First push of a new branch needs an upstream.
     match git(&path, &["push"]) {
@@ -233,12 +240,12 @@ pub fn git_push(path: String) -> Result<String, String> {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_pull(path: String) -> Result<String, String> {
     git(&path, &["pull", "--ff-only"])
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_clone(url: String, dest: String) -> Result<String, String> {
     let output = quiet_command("git")
         .args(["clone", "--progress", &url, &dest])
@@ -258,7 +265,7 @@ pub struct FileDiff {
 }
 
 /// The file at `base` (HEAD by default) vs. the working tree, relative to the repo root.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_diff_file(path: String, file: String, base: Option<String>) -> Result<FileDiff, String> {
     let at = base.as_deref().map(str::trim).filter(|b| !b.is_empty()).unwrap_or("HEAD");
     let original = git(&path, &["show", &format!("{at}:{}", file.replace('\\', "/"))]).unwrap_or_default();
@@ -275,7 +282,7 @@ pub struct DayCount {
 }
 
 /// Commits per day over the last `days` (default 365), oldest first — the contribution map.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_activity(path: String, days: Option<u32>) -> Result<Vec<DayCount>, String> {
     let since = format!("{} days ago", days.unwrap_or(365));
     let out = git(&path, &["log", "--since", &since, "--date=short", "--pretty=format:%ad"])?;
@@ -290,7 +297,7 @@ pub fn git_activity(path: String, days: Option<u32>) -> Result<Vec<DayCount>, St
 }
 
 /// `git config user.name` (global or repo), for greetings.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_user_name(path: Option<String>) -> Option<String> {
     let dir = path.unwrap_or_else(|| ".".to_string());
     git(&dir, &["config", "user.name"]).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
@@ -304,7 +311,7 @@ pub struct GitHead {
 }
 
 /// Where the checkout is right now: the commit and the branch name ("HEAD" when detached).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_head(path: String) -> Result<GitHead, String> {
     let sha = git(&path, &["rev-parse", "HEAD"])?.trim().to_string();
     let branch = git(&path, &["rev-parse", "--abbrev-ref", "HEAD"])?.trim().to_string();
@@ -333,7 +340,7 @@ fn count_lines(path: &std::path::Path) -> u32 {
 
 /// Everything that differs between `base` (HEAD by default) and the working tree — committed or not — plus untracked
 /// files, with their line counts. What an agent did in its worktree, in one list.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_changes(path: String, base: Option<String>) -> Result<Vec<ChangedFile>, String> {
     let at = base.as_deref().map(str::trim).filter(|b| !b.is_empty()).unwrap_or("HEAD").to_string();
     let mut out: Vec<ChangedFile> = Vec::new();
@@ -366,7 +373,7 @@ pub fn git_changes(path: String, base: Option<String>) -> Result<Vec<ChangedFile
 }
 
 /// Stage everything and commit; `false` when there was nothing to commit.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_commit_all(path: String, message: String) -> Result<bool, String> {
     git(&path, &["add", "-A"])?;
     let staged = git(&path, &["diff", "--cached", "--quiet"]).is_err();
@@ -379,7 +386,7 @@ pub fn git_commit_all(path: String, message: String) -> Result<bool, String> {
 
 /// Merge `branch` into the current branch with a merge commit. A conflict is backed out (`merge --abort`) and reported
 /// with the files involved — the checkout is left as it was.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_merge(path: String, branch: String, message: String) -> Result<String, String> {
     match git(&path, &["merge", "--no-ff", "-m", &message, &branch]) {
         Ok(out) => Ok(out),
@@ -408,7 +415,7 @@ pub struct Worktree {
     pub main: bool,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_worktrees(path: String) -> Result<Vec<Worktree>, String> {
     let out = git(&path, &["worktree", "list", "--porcelain"])?;
     let mut list = Vec::new();
@@ -441,7 +448,7 @@ pub fn git_worktrees(path: String) -> Result<Vec<Worktree>, String> {
 
 /// Create `branch` checked out at `dest`: an existing branch as is, a new one from `base` (HEAD by default —
 /// `main`, `origin/main`, a tag, anything `git worktree add -b` accepts).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_worktree_add(path: String, dest: String, branch: String, base: Option<String>) -> Result<(), String> {
     let exists = git(&path, &["rev-parse", "--verify", "--quiet", &format!("refs/heads/{branch}")]).is_ok();
     if exists {
@@ -458,7 +465,7 @@ pub fn git_worktree_add(path: String, dest: String, branch: String, base: Option
 /// Remove the checkout; with `delete_branch` the branch goes too (forced — the work is the user's call). On Windows
 /// the folder often survives as an empty shell while a process that just left it still holds it as its working
 /// directory: the entry is gone by then, so the branch is deleted anyway and the folder is retried for a moment.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn git_worktree_remove(path: String, dest: String, force: Option<bool>, delete_branch: Option<String>) -> Result<(), String> {
     let args: &[&str] = if force.unwrap_or(false) { &["worktree", "remove", "--force", &dest] } else { &["worktree", "remove", &dest] };
     let removed = match git(&path, args) {
