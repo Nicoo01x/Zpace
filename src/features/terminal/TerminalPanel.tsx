@@ -13,6 +13,8 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
 import { springs } from '@/lib/motion';
 import { ShellIcon } from './ShellIcon';
+import { PixelGrid } from '@/components/ui/LoadingState';
+import { useTerminalActivity } from './activity';
 import type { ShellInfo } from '@/types/workspace';
 import { t as tr } from '@/i18n';
 
@@ -30,6 +32,7 @@ export function TerminalPanel() {
   const { openTerminal, splitActive } = useWorkspaceActions();
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const busyTabs = useTerminalActivity((s) => s.busy);
 
   useEffect(() => {
     // Read the store directly: StrictMode runs effects twice and the closure would be stale.
@@ -63,7 +66,7 @@ export function TerminalPanel() {
                     )}
                   >
                     {isActive ? <motion.span layoutId="terminal-tab" transition={springs.layout} className="absolute inset-0 -z-10 rounded-md bg-surface-active" /> : null}
-                    <ShellIcon shellId={t.shellId} className="size-[12px] text-muted" />
+                    {busyTabs[t.id] ? <PixelGrid className="text-primary" /> : <ShellIcon shellId={t.shellId} className="size-[12px] text-muted" />}
                     <Swap k={editing === t.id ? 'edit' : 'label'} className="flex min-w-0 flex-1 items-center">
                       {editing === t.id ? (
                         <input

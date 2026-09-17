@@ -14,7 +14,8 @@ import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
 import { ShellIcon } from './ShellIcon';
 import { AgentLogo } from '@/features/agent/BrandIcon';
 import { revealInFileManager } from '@/native/system';
-import { Grip } from '@/components/ui/Grip';
+import { PixelGrid } from '@/components/ui/LoadingState';
+import { useTerminalActivity } from './activity';
 import { paneDragProps } from '@/features/sessions/pane-drag';
 import { t } from '@/i18n';
 
@@ -33,6 +34,7 @@ export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab
   const [draft, setDraft] = useState(tab.title);
 
   const active = activePaneContent?.kind === 'terminal' && activePaneContent.terminalId === tab.id;
+  const busy = useTerminalActivity((s) => !!s.busy[tab.id]);
   const isClaude = !!tab.program;
   const label = tab.title === tab.shellId ? (shells?.find((s) => s.id === tab.shellId)?.label ?? tab.title) : tab.title;
 
@@ -65,8 +67,8 @@ export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab
             active ? 'bg-surface-active text-primary' : 'text-secondary hover:bg-surface-hover hover:text-primary focus-visible:bg-surface-hover',
           )}
         >
-          <span className="inline-flex w-5 shrink-0 items-center justify-center">
-            <Grip className={cn('transition-opacity duration-(--motion-fast)', active ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-40')} />
+          <span className={cn('inline-flex w-5 shrink-0 items-center justify-center', busy ? 'text-primary' : tab.ptyId ? 'text-success' : 'text-muted')} title={busy ? t('Working') : tab.ptyId ? t('Running') : t('Not started')}>
+            <PixelGrid rows={2} active={busy} />
           </span>
           {isClaude ? (
             <span className={cn('inline-flex shrink-0 items-center', active ? 'text-primary' : 'text-secondary')}>
@@ -97,7 +99,6 @@ export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab
               <span className={cn('min-w-0 flex-1 truncate', active && 'font-medium')}>{label}</span>
             )}
           </Swap>
-          <span className={cn('size-1.5 shrink-0 rounded-full', tab.ptyId ? 'bg-success' : 'bg-muted/50')} title={tab.ptyId ? t('Running') : t('Not started')} />
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-[220px]">

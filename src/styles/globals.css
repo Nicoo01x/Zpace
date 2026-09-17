@@ -274,6 +274,26 @@ samp {
   }
 }
 
+/* the pixel-grid loader (LoadingState): a cell lighting up, and its label's sheen */
+@keyframes pixel-on {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer-text {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 @keyframes pulse-dot {
   0%,
   100% {

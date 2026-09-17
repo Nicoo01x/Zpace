@@ -1,6 +1,8 @@
 import { memo, useState, type ReactNode } from 'react';
 import { Users, X, SplitSquareHorizontal, SplitSquareVertical, Terminal as TerminalIcon, FileDiff, Search, MoreHorizontal, Plus, FolderOpen, Settings, Keyboard, Info, FolderTree, GitBranch, Pencil, Copy, StopCircle, FileText, Globe, NotebookPen, Maximize2, Minimize2, Swords } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '@/lib/cn';
+import { springs } from '@/lib/motion';
 import { useUI, collectLeaves } from '@/stores/ui';
 import { useSettings } from '@/stores/settings';
 import { sessionTitle, useSessions } from '@/stores/sessions';
@@ -33,6 +35,8 @@ import { uid } from '@/lib/id';
 import { IconButton } from '@/components/ui/IconButton';
 import { Grip } from '@/components/ui/Grip';
 import { AgentGlyph } from '@/features/agent/AgentGlyph';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { useTerminalActivity } from '@/features/terminal/activity';
 import { TerminalPanel } from '@/features/terminal/TerminalPanel';
 import { Explorer } from '@/features/files/Explorer';
 import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
@@ -267,6 +271,7 @@ function PaneHeader({ leaf, active }: { leaf: PaneLeaf; active: boolean }) {
                           ? pluginPaneTitle(content.pluginId, content.paneId)
                           : (project?.name ?? 'Zpace');
   const busy = session?.status === 'running' || session?.status === 'waiting';
+  const terminalBusySince = useTerminalActivity((s) => (terminalId ? s.busy[terminalId] : undefined));
 
   // Split opens a fresh sibling of the same kind (new terminal, new note, new browser tab);
   // sessions and files are shown twice, which is what you want for reading alongside.
@@ -324,6 +329,13 @@ function PaneHeader({ leaf, active }: { leaf: PaneLeaf; active: boolean }) {
           <AgentGlyph active className="size-[12px]" />
         </span>
       ) : null}
+      <AnimatePresence>
+        {terminalBusySince ? (
+          <motion.span key="term-busy" initial={{ opacity: 0, x: 4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 4 }} transition={springs.snappy} className="mr-1 inline-flex items-center">
+            <LoadingState label={t('Running')} since={terminalBusySince} />
+          </motion.span>
+        ) : null}
+      </AnimatePresence>
       <div className="flex items-center gap-0.5 no-drag">
         {session ? <ChangesButton sessionId={session.id} /> : null}
         <IconButton label={zoomed ? t('Restore layout') : t('Maximize pane')} shortcut="mod+shift+enter" size="md" onClick={() => toggleZoom(leaf.id)} active={zoomed}>
