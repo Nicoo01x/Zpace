@@ -12,6 +12,8 @@ import { useEnvironment, whenEnvironmentReady } from '@/stores/environment';
 import { terminalFontStack } from '@/lib/fonts';
 import { useTerminals } from '@/stores/terminals';
 import { onPtyData, onPtyExit, ptyAlive, ptyAvailable, ptyKill, ptyResize, ptySpawn, ptyWrite } from '@/native/pty';
+import { forgetActivity, noteInput, noteOutput } from './activity';
+import { alignClaudeTheme } from '@/features/agent/claude-theme';
 import { openUrl } from '@/native/system';
 import type { TerminalTab } from '@/types/workspace';
 import { createPreviewShell } from './previewShell';
@@ -41,6 +43,13 @@ function envFromSettings(): Record<string, string> {
     out[line.slice(0, i).trim()] = line.slice(i + 1).trim();
   }
   return out;
+}
+
+/** Whether the terminal's scheme is a dark one right now (the app's side when it follows the app). */
+function terminalIsDark(): boolean {
+  const { scheme: schemeId, appearance } = useSettings.getState().terminal;
+  const appDark = appearance === 'auto' ? document.documentElement.classList.contains('dark') : appearance === 'dark';
+  return resolveScheme(schemeId, appDark).dark;
 }
 
 function themeFromSettings(): ITheme {
@@ -165,7 +174,7 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
     // Ctrl+F finds in this terminal; application shortcuts (palette, new terminal, …) are handled by the
     // window listener and must not also reach the shell as control characters.
     // Windows Terminal's rule: Ctrl+C with a selection copies it (and sends nothing to the shell); with nothing
-    // selected it is the interrupt. Ctrl+Shift+C / Ctrl+Insert always copy, Ctrl+Shift+V / Shift+Insert paste.
+    // selected it is the interrupt. Ctrl+Shift+C / Ctrl+Insert always copy, Ctrl+V / Ctrl+Shift+V / Shift+Insert paste.
     const copySelection = () => {
       const sel = term.getSelection();
       if (!sel) return false;
@@ -173,11 +182,19 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
       term.clearSelection();
       return true;
     };
+    // Text is pasted as text (bracketed). A picture on the clipboard has no text, so the browser's own paste
+    // did nothing: the TUIs that take images (Claude Code) read the clipboard themselves when they receive
+    // Ctrl+V, so that key goes through to the process instead.
     const pasteClipboard = () => {
-      void navigator.clipboard
-        ?.readText()
-        .then((text) => text && term.paste(text))
-        .catch(() => void 0);
+      void (async () => {
+        const text = await navigator.clipboard?.readText().catch(() => '');
+        if (text) {
+          term.paste(text);
+          return;
+        }
+        const items = await navigator.clipboard?.read().catch(() => [] as ClipboardItem[]);
+        if (items.some((it) => it.types.some((type) => type.startsWith('image/')))) term.input('\x16', true);
+      })();
     };
     term.attachCustomKeyEventHandler((e) => {
       if (e.type === 'keydown' && e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -188,7 +205,7 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
             return false;
           }
         }
-        if (key === 'v' && e.shiftKey) {
+        if (key === 'v') {
           e.preventDefault();
           pasteClipboard();
           return false;
@@ -230,9 +247,12 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
         /* host hidden */
       }
     };
+    let sent = { cols: 0, rows: 0 };
     const refit = () => {
       doFit();
-      if (ptyId) void ptyResize(ptyId, term.cols, term.rows);
+      if (!ptyId || (sent.cols === term.cols && sent.rows === term.rows)) return;
+      sent = { cols: term.cols, rows: term.rows };
+      void ptyResize(ptyId, term.cols, term.rows);
     };
     refitRef.current = refit;
     doFit();
@@ -257,9 +277,38 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
       const existing = tab.ptyId && ptyAlive(tab.ptyId) ? tab.ptyId : null;
       // The shell list comes from native detection; a tab restored at startup may mount before it.
       void whenEnvironmentReady()
-        .then((env) => {
+        .then(async (env) => {
           if (disposed) throw new Error('disposed');
+          // The first terminal of a launch mounts before the environment report names the system's terminal
+          // font, so it was measured with a stand-in face; the shell would then paint its prompt for those
+          // columns and get reflowed by ConPTY when the real font (and the lazy icon font) arrived — the
+          // "broken first prompt". Dress the terminal with the final font, wait for it, measure, then spawn.
+          const family = fontFromSettings();
+          if (term.options.fontFamily !== family) term.options.fontFamily = family;
+          if (typeof document.fonts?.load === 'function') {
+            await Promise.all([document.fonts.load(`${fontSize}px 'Symbols Nerd Font Mono'`), document.fonts.ready]).catch(() => void 0);
+          }
+          // …and for the pane to stop moving: a tile still settling its split, a header that just appeared.
+          // A TUI spawned into a size that changes a frame later paints its bottom bar twice.
+          await new Promise<void>((resolve) => {
+            let last = { w: host.clientWidth, h: host.clientHeight };
+            let stable = 0;
+            let frames = 0;
+            const tick = () => {
+              const cur = { w: host.clientWidth, h: host.clientHeight };
+              stable = cur.w === last.w && cur.h === last.h ? stable + 1 : 0;
+              last = cur;
+              if (disposed || (stable >= 2 && cur.w > 0 && cur.h > 0) || ++frames > 30) resolve();
+              else requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          });
+          if (disposed) throw new Error('disposed');
+          doFit();
           if (existing) return existing;
+          // Claude Code's own theme follows the terminal's side, or your messages come out as black bars on a light one.
+          if (tab.program?.agent === 'claude' && tab.program.path !== 'wsl.exe') await alignClaudeTheme(terminalIsDark()).catch(() => void 0);
+          if (disposed) throw new Error('disposed');
           const shell = env.shells.find((s) => s.id === tab.shellId) ?? env.shells[0];
           // A tab can run a program directly (Claude Code's TUI) instead of a shell.
           return ptySpawn({
@@ -277,6 +326,7 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
             return;
           }
           ptyId = id;
+          sent = { cols: term.cols, rows: term.rows };
           setPty(tab.id, id);
           // A startup command for shells (not for Claude Code and friends): typed once the prompt is likely up.
           const startup = useSettings.getState().terminal.startupCommand.trim();
@@ -289,11 +339,13 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
             onPtyData(id, (bytes) => {
               const text = decoder.decode(bytes, { stream: true });
               term.write(text);
+              noteOutput(tab.id);
               if (tab.program) tail = (tail + text).slice(-600);
             }),
           );
           cleanups.push(
             onPtyExit(id, (code) => {
+              forgetActivity(tab.id);
               term.write(`\r\n\x1b[2m[process exited with code ${code ?? '?'}]\x1b[0m\r\n`);
               // An agent that quits right away (missing binary, bad flag, no login) is an error, not a session.
               if (tab.program && code !== 0 && Date.now() - startedAt < 4000) {
@@ -305,7 +357,10 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
               onExit?.(code);
             }),
           );
-          const d = term.onData((data) => void ptyWrite(id, data));
+          const d = term.onData((data) => {
+            noteInput(tab.id);
+            void ptyWrite(id, data);
+          });
           cleanups.push(() => d.dispose());
         })
         .catch((e) => {
