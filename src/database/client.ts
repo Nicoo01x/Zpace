@@ -51,6 +51,8 @@ interface ProjectRow {
   expanded: number;
   sort_order: number;
   color: string | null;
+  /** JSON: `ProjectFolder[]`. */
+  folders?: string | null;
 }
 interface SessionRow {
   id: string;
@@ -68,7 +70,7 @@ interface SessionRow {
   dirty_files: number;
   provider_session_id: string | null;
   worktree?: string | null;
-  /** JSON: { hidden, options, agentId } — the session fields that arrived after the table. */
+  /** JSON: { hidden, options, agentId, folderId } — the session fields that arrived after the table. */
   extra?: string | null;
   cost_usd: number;
 }
@@ -83,6 +85,7 @@ interface NoteRow {
   body: string;
   tags: string;
   project_id: string | null;
+  folder_id?: string | null;
   pinned: number;
   kind: string | null;
   created_at: number;
@@ -95,6 +98,7 @@ interface TerminalRow {
   cwd: string;
   program: string | null;
   project_id: string | null;
+  folder_id?: string | null;
   created_at: number;
 }
 
@@ -112,6 +116,7 @@ async function load() {
       createdAt: r.created_at,
       expanded: !!r.expanded,
       color: r.color ?? undefined,
+      ...(r.folders ? { folders: safeJson<Project['folders']>(r.folders, undefined) } : {}),
     }));
     useProjects.getState().hydrate(projects);
   }
@@ -137,7 +142,7 @@ async function load() {
         dirtyFiles: r.dirty_files,
         providerSessionId: r.provider_session_id ?? undefined,
         worktree: r.worktree ? safeJson<Session['worktree']>(r.worktree, undefined) : undefined,
-        ...(r.extra ? safeJson<Pick<Session, 'hidden' | 'options' | 'agentId'>>(r.extra, {}) : {}),
+        ...(r.extra ? safeJson<Pick<Session, 'hidden' | 'options' | 'agentId' | 'folderId'>>(r.extra, {}) : {}),
       };
     }
     const erows = await sql.select<EventRow[]>('SELECT id, session_id, payload FROM events ORDER BY timestamp ASC');
@@ -159,6 +164,7 @@ async function load() {
         body: r.body,
         tags: safeJson<string[]>(r.tags, []),
         projectId: r.project_id ?? undefined,
+        folderId: r.folder_id ?? undefined,
         pinned: !!r.pinned,
         kind: r.kind === 'board' ? 'board' : 'text',
         createdAt: r.created_at,
@@ -176,6 +182,7 @@ async function load() {
       cwd: r.cwd,
       program: r.program ? safeJson<TerminalTab['program']>(r.program, undefined) : undefined,
       projectId: r.project_id ?? undefined,
+      folderId: r.folder_id ?? undefined,
       createdAt: r.created_at,
     }));
     useTerminals.getState().hydrate(tabs);
@@ -217,8 +224,8 @@ async function flush() {
       for (let i = 0; i < list.length; i++) {
         const p = list[i];
         await sql.execute(
-          'INSERT OR REPLACE INTO projects (id,name,path,runtime,wsl_distro,last_opened_at,created_at,expanded,sort_order,color) VALUES (?,?,?,?,?,?,?,?,?,?)',
-          [p.id, p.name, p.path, p.runtime, p.wslDistro ?? null, p.lastOpenedAt, p.createdAt, p.expanded ? 1 : 0, i, p.color ?? null],
+          'INSERT OR REPLACE INTO projects (id,name,path,runtime,wsl_distro,last_opened_at,created_at,expanded,sort_order,color,folders) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+          [p.id, p.name, p.path, p.runtime, p.wslDistro ?? null, p.lastOpenedAt, p.createdAt, p.expanded ? 1 : 0, i, p.color ?? null, p.folders?.length ? JSON.stringify(p.folders) : null],
         );
       }
       await dropMissing('projects', list.map((p) => p.id));
@@ -227,7 +234,7 @@ async function flush() {
       dirtyNotes = false;
       const notes = Object.values(useNotes.getState().notes);
       for (const n of notes) {
-        await sql.execute('INSERT OR REPLACE INTO notes (id,title,body,tags,project_id,pinned,kind,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)', [
+        await sql.execute('INSERT OR REPLACE INTO notes (id,title,body,tags,project_id,pinned,kind,created_at,updated_at,folder_id) VALUES (?,?,?,?,?,?,?,?,?,?)', [
           n.id,
           n.title,
           n.body,
@@ -237,6 +244,7 @@ async function flush() {
           n.kind ?? 'text',
           n.createdAt,
           n.updatedAt,
+          n.folderId ?? null,
         ]);
       }
       await dropMissing('notes', notes.map((n) => n.id));
@@ -246,7 +254,7 @@ async function flush() {
       const tabs = useTerminals.getState().tabs;
       for (let i = 0; i < tabs.length; i++) {
         const t = tabs[i];
-        await sql.execute('INSERT OR REPLACE INTO terminals (id,title,shell_id,cwd,program,project_id,created_at,sort_order) VALUES (?,?,?,?,?,?,?,?)', [
+        await sql.execute('INSERT OR REPLACE INTO terminals (id,title,shell_id,cwd,program,project_id,created_at,sort_order,folder_id) VALUES (?,?,?,?,?,?,?,?,?)', [
           t.id,
           t.title,
           t.shellId,
@@ -255,6 +263,7 @@ async function flush() {
           t.projectId ?? null,
           t.createdAt,
           i,
+          t.folderId ?? null,
         ]);
       }
       await dropMissing('terminals', tabs.map((t) => t.id));
@@ -272,7 +281,7 @@ async function flush() {
       await sql.execute(
         `INSERT OR REPLACE INTO sessions (id,project_id,title,provider_id,model,status,usage,runtime_ms,created_at,updated_at,pinned,archived,dirty_files,provider_session_id,cost_usd,worktree,extra)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [s.id, s.projectId, s.title, s.providerId, s.model, s.status, JSON.stringify(s.usage), s.runtimeMs, s.createdAt, s.updatedAt, s.pinned ? 1 : 0, s.archived ? 1 : 0, s.dirtyFiles, s.providerSessionId ?? null, s.usage.costUsd, s.worktree ? JSON.stringify(s.worktree) : null, s.hidden || s.options || s.agentId ? JSON.stringify({ hidden: s.hidden, options: s.options, agentId: s.agentId }) : null],
+        [s.id, s.projectId, s.title, s.providerId, s.model, s.status, JSON.stringify(s.usage), s.runtimeMs, s.createdAt, s.updatedAt, s.pinned ? 1 : 0, s.archived ? 1 : 0, s.dirtyFiles, s.providerSessionId ?? null, s.usage.costUsd, s.worktree ? JSON.stringify(s.worktree) : null, s.hidden || s.options || s.agentId || s.folderId ? JSON.stringify({ hidden: s.hidden, options: s.options, agentId: s.agentId, folderId: s.folderId }) : null],
       );
       for (const ev of state.events[id] ?? []) {
         // Events are immutable objects; a new reference (streamed text, patched status) means a rewrite.

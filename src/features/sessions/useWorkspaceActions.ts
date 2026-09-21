@@ -1,7 +1,10 @@
 import { useCallback, useMemo } from 'react';
 import { useUI, collectLeaves } from '@/stores/ui';
 import { useSessions } from '@/stores/sessions';
-import { useProjects } from '@/stores/projects';
+import { useProjects, folderCwd, folderOf } from '@/stores/projects';
+import { useAgents } from '@/stores/agents';
+import { useArena } from '@/stores/arena';
+import { askText } from '@/stores/prompt';
 import { useSettings, modelLabel, modelContext } from '@/stores/settings';
 import { useBrowserMemory } from '@/stores/browser-memory';
 import { useTerminals } from '@/stores/terminals';
@@ -14,7 +17,7 @@ import { runtime } from '@/providers/runtime';
 import { uid } from '@/lib/id';
 import { basename } from '@/lib/format';
 import { isTauri } from '@/lib/platform';
-import type { PaneContent, TerminalTab } from '@/types/workspace';
+import type { PaneContent, Project, ProjectFolder, TerminalTab } from '@/types/workspace';
 import { AGENT_BINARY, AGENT_LABEL, agentPromptArgs, type AgentKind } from '@/features/agent/agents';
 import { engineById } from '@/features/browser/engines';
 import { queueDraft } from '@/features/agent/composer-drafts';
@@ -220,8 +223,9 @@ export function useWorkspaceActions() {
     [showInActivePane],
   );
 
+  /** `folderId` lists the session in a sub-folder of the project (and runs it there when the folder is bound to disk). */
   const newSession = useCallback(
-    (projectId?: string) => {
+    (projectId?: string, opts: { folderId?: string } = {}) => {
       const sessions = useSessions.getState();
       const settings = useSettings.getState();
       const pid = projectId ?? currentProject()?.id;
@@ -231,8 +235,9 @@ export function useWorkspaceActions() {
       }
       const model = settings.claude.defaultModel;
       const contextMax = modelContext(model);
-      const s = sessions.createSession({ projectId: pid, model, contextMax });
+      const s = sessions.createSession({ projectId: pid, model, contextMax, folderId: opts.folderId });
       useProjects.getState().toggleExpanded(pid, true);
+      if (opts.folderId) useProjects.getState().toggleFolder(pid, opts.folderId, true);
       useUI.getState().setActiveSession(s.id);
       const project = useProjects.getState().projects.find((p) => p.id === pid);
       toast.success(t('New session'), { description: `${project?.name ?? 'Project'} · ${modelLabel(model)}`, duration: CREATED_TOAST_MS });
@@ -259,27 +264,32 @@ export function useWorkspaceActions() {
 
   /* ----------------------------- terminals --------------------------- */
 
-  /** `projectId: null` opens a terminal that belongs to no project (home directory, listed under the global Terminals section). */
+  /**
+   * `projectId: null` opens a terminal that belongs to no project (home directory, listed under the global Terminals section).
+   * `folderId` lists it in a sub-folder of the project, and starts it there when the folder is bound to disk.
+   */
   const createTerminalTab = useCallback(
-    (opts: { shellId?: string; cwd?: string; projectId?: string | null; program?: TerminalTab['program']; title?: string } = {}) => {
+    (opts: { shellId?: string; cwd?: string; projectId?: string | null; folderId?: string; program?: TerminalTab['program']; title?: string } = {}) => {
       const env = useEnvironment.getState().report;
       const settings = useSettings.getState();
       const shells = env?.shells ?? [];
       const shellId = opts.shellId ?? settings.terminal.shellId ?? shells[0]?.id ?? 'pwsh';
       const project = opts.projectId === null ? undefined : opts.projectId ? useProjects.getState().projects.find((p) => p.id === opts.projectId) : currentProject();
-      const cwd = opts.cwd ?? project?.path ?? '';
+      const folder = folderOf(project, opts.folderId);
+      const cwd = opts.cwd ?? (project ? folderCwd(project, folder?.id) : '');
       const shell = shells.find((s) => s.id === shellId);
       const title = opts.title ?? (opts.program ? opts.program.label : (shell?.label ?? shellId));
       // Project terminals are listed inside their project — make sure it is unfolded so the new row is visible.
       if (project) useProjects.getState().toggleExpanded(project.id, true);
-      return useTerminals.getState().createTab({ shellId, cwd, title, program: opts.program, projectId: project?.id });
+      if (project && folder) useProjects.getState().toggleFolder(project.id, folder.id, true);
+      return useTerminals.getState().createTab({ shellId, cwd, title, program: opts.program, projectId: project?.id, folderId: folder?.id });
     },
     [currentProject],
   );
 
   /** Terminal in the bottom drawer (Ctrl+`). */
   const openTerminal = useCallback(
-    (opts: { split?: 'horizontal' | 'vertical'; shellId?: string; cwd?: string; projectId?: string | null } = {}) => {
+    (opts: { split?: 'horizontal' | 'vertical'; shellId?: string; cwd?: string; projectId?: string | null; folderId?: string } = {}) => {
       const tab = createTerminalTab(opts);
       const ui = useUI.getState();
       if (opts.split) splitActive(opts.split, { kind: 'terminal', terminalId: tab.id });
@@ -291,12 +301,13 @@ export function useWorkspaceActions() {
 
   /** Terminal as a first-class pane (sidebar item). */
   const openTerminalPane = useCallback(
-    (opts: { shellId?: string; cwd?: string; projectId?: string | null; program?: TerminalTab['program']; title?: string } = {}) => {
+    (opts: { shellId?: string; cwd?: string; projectId?: string | null; folderId?: string; program?: TerminalTab['program']; title?: string } = {}) => {
       const tab = createTerminalTab(opts);
       showInActivePane({ kind: 'terminal', terminalId: tab.id });
       if (!opts.program) {
         const project = tab.projectId ? useProjects.getState().projects.find((p) => p.id === tab.projectId) : undefined;
-        toast.success(`${tab.title} opened`, { description: project ? `In ${project.name}` : 'Home directory', duration: CREATED_TOAST_MS });
+        const folder = folderOf(project, tab.folderId);
+        toast.success(`${tab.title} opened`, { description: project ? `In ${folder ? `${project.name} / ${folder.name}` : project.name}` : 'Home directory', duration: CREATED_TOAST_MS });
       }
       return tab;
     },
@@ -316,11 +327,13 @@ export function useWorkspaceActions() {
    * Called by the launch dialog, or directly with the settings defaults.
    */
   const launchClaude = useCallback(
-    (projectId: string, launch: ClaudeLaunchArgs) => {
+    (projectId: string, launch: ClaudeLaunchArgs, folderId?: string) => {
       const env = useEnvironment.getState().report;
       const settings = useSettings.getState();
       const project = useProjects.getState().projects.find((p) => p.id === projectId);
       if (!project) return undefined;
+      const folder = folderOf(project, folderId);
+      const cwd = folderCwd(project, folder?.id);
       if (isTauri && !env?.claude.found) {
         toast.error(t('Claude Code not found'), { description: t('Install it or set the binary path in Settings › Claude Code.') });
         return undefined;
@@ -331,11 +344,13 @@ export function useWorkspaceActions() {
         project.runtime === 'wsl'
           ? openTerminalPane({
               projectId: project.id,
-              cwd: project.path,
-              program: { path: 'wsl.exe', args: ['-d', project.wslDistro ?? 'Ubuntu', '--cd', project.path, '--', 'claude', ...args], label: t('Claude Code'), agent: 'claude' },
+              folderId: folder?.id,
+              cwd,
+              program: { path: 'wsl.exe', args: ['-d', project.wslDistro ?? 'Ubuntu', '--cd', cwd, '--', 'claude', ...args], label: t('Claude Code'), agent: 'claude' },
             })
-          : openTerminalPane({ projectId: project.id, cwd: project.path, program: { path, args, label: t('Claude Code'), agent: 'claude' } });
-      toast.success(t('Claude Code started'), { description: args.length ? `${project.name} · ${args.join(' ')}` : project.name, duration: CREATED_TOAST_MS });
+          : openTerminalPane({ projectId: project.id, folderId: folder?.id, cwd, program: { path, args, label: t('Claude Code'), agent: 'claude' } });
+      const where = folder ? `${project.name} / ${folder.name}` : project.name;
+      toast.success(t('Claude Code started'), { description: args.length ? `${where} · ${args.join(' ')}` : where, duration: CREATED_TOAST_MS });
       return tab;
     },
     [openTerminalPane],
@@ -343,7 +358,7 @@ export function useWorkspaceActions() {
 
   /** Other agent CLIs (Codex, Gemini CLI, OpenCode) as a terminal TUI in a project folder. */
   const openAgentTerminal = useCallback(
-    async (agent: Exclude<AgentKind, 'claude'>, opts: { projectId?: string; folder?: string; args?: string[] } = {}) => {
+    async (agent: Exclude<AgentKind, 'claude'>, opts: { projectId?: string; folder?: string; folderId?: string; args?: string[] } = {}) => {
       const env = useEnvironment.getState().report;
       const tool = env?.[agent];
       if (isTauri && !tool?.found) {
@@ -359,15 +374,18 @@ export function useWorkspaceActions() {
       }
       const path = tool?.path ?? AGENT_BINARY[agent];
       const args = opts.args ?? [];
+      const folder = folderOf(project, opts.folderId);
+      const cwd = folderCwd(project, folder?.id);
       const tab =
         project.runtime === 'wsl'
           ? openTerminalPane({
               projectId: project.id,
-              cwd: project.path,
-              program: { path: 'wsl.exe', args: ['-d', project.wslDistro ?? 'Ubuntu', '--cd', project.path, '--', AGENT_BINARY[agent], ...args], label: AGENT_LABEL[agent], agent },
+              folderId: folder?.id,
+              cwd,
+              program: { path: 'wsl.exe', args: ['-d', project.wslDistro ?? 'Ubuntu', '--cd', cwd, '--', AGENT_BINARY[agent], ...args], label: AGENT_LABEL[agent], agent },
             })
-          : openTerminalPane({ projectId: project.id, cwd: project.path, program: { path, args, label: AGENT_LABEL[agent], agent } });
-      toast.success(`${AGENT_LABEL[agent]} started`, { description: project.name, duration: CREATED_TOAST_MS });
+          : openTerminalPane({ projectId: project.id, folderId: folder?.id, cwd, program: { path, args, label: AGENT_LABEL[agent], agent } });
+      toast.success(`${AGENT_LABEL[agent]} started`, { description: folder ? `${project.name} / ${folder.name}` : project.name, duration: CREATED_TOAST_MS });
       return tab;
     },
     [addProjectPath, openTerminalPane],
@@ -415,8 +433,9 @@ export function useWorkspaceActions() {
    * folder if needed), then either launches with the settings defaults or opens the
    * launch dialog (`ask`, or Settings › Claude Code › "Ask before launching").
    */
+  /** `folder` is a path to open as a project; `folderId` a sub-folder of the project to start in. */
   const openClaudeTerminal = useCallback(
-    async (opts: { projectId?: string; folder?: string; ask?: boolean } = {}) => {
+    async (opts: { projectId?: string; folder?: string; folderId?: string; ask?: boolean } = {}) => {
       const settings = useSettings.getState();
       let project = opts.projectId ? useProjects.getState().projects.find((p) => p.id === opts.projectId) : undefined;
       if (!project && opts.folder) project = await addProjectPath(opts.folder);
@@ -426,22 +445,124 @@ export function useWorkspaceActions() {
         project = await addProjectPath(folder);
       }
       if (opts.ask || settings.claude.askArgs) {
-        useUI.getState().setClaudeLaunch({ projectId: project.id });
+        useUI.getState().setClaudeLaunch({ projectId: project.id, folderId: opts.folderId });
         return undefined;
       }
-      return launchClaude(project.id, claudeLaunchDefaults(settings.claude));
+      return launchClaude(project.id, claudeLaunchDefaults(settings.claude), opts.folderId);
     },
     [addProjectPath, launchClaude],
   );
+
+  /* ------------------------------ folders ---------------------------- */
+
+  /** Pick a folder on disk that lies inside the project (the picker opens there); null when cancelled or outside. */
+  const pickProjectSubfolder = useCallback(async (project: Project): Promise<string | null> => {
+    const picked = await pickFolder(t('Choose a folder inside {name}', { name: project.name }), project.path);
+    if (!picked) return null;
+    const norm = (p: string) => p.replace(/[\\/]+$/, '').replace(/\//g, '\\').toLowerCase();
+    const root = norm(project.path);
+    const sub = norm(picked);
+    if (sub === root || !sub.startsWith(`${root}\\`)) {
+      toast.error(t('Not inside the project'), { description: t('Pick a folder under {path}.', { path: project.path }) });
+      return null;
+    }
+    return picked;
+  }, []);
+
+  /**
+   * A sub-folder of the project: named from a prompt, or — `fromDisk` — a real
+   * folder chosen inside the project, named after it.
+   */
+  const newFolder = useCallback(
+    async (projectId: string, opts: { fromDisk?: boolean } = {}): Promise<ProjectFolder | undefined> => {
+      const project = useProjects.getState().projects.find((p) => p.id === projectId);
+      if (!project) return undefined;
+      let name: string | undefined;
+      let path: string | undefined;
+      if (opts.fromDisk) {
+        const picked = await pickProjectSubfolder(project);
+        if (!picked) return undefined;
+        path = picked;
+        name = basename(picked);
+      } else {
+        const answer = await askText({ title: t('New folder in {name}', { name: project.name }), description: t('A group for the project’s terminals, sessions and notes. Link it to a folder on disk later and what you create in it will work there.'), placeholder: t('Folder name'), confirm: t('Create') });
+        if (!answer?.trim()) return undefined;
+        name = answer.trim();
+      }
+      const folder = useProjects.getState().addFolder(projectId, { name, path });
+      if (folder) toast.success(t('Folder created'), { description: path ?? `${project.name} / ${name}`, duration: CREATED_TOAST_MS });
+      return folder;
+    },
+    [pickProjectSubfolder],
+  );
+
+  /** Every item the folder held goes back to the project's root, then the folder goes. */
+  const removeFolder = useCallback((projectId: string, folderId: string) => {
+    const project = useProjects.getState().projects.find((p) => p.id === projectId);
+    const folder = folderOf(project, folderId);
+    if (!project || !folder) return;
+    const terminals = useTerminals.getState();
+    for (const tab of terminals.tabs) if (tab.folderId === folderId) terminals.setFolder(tab.id, undefined);
+    const sessions = useSessions.getState();
+    for (const s of Object.values(sessions.sessions)) if (s.folderId === folderId) sessions.updateSession(s.id, { folderId: undefined });
+    const notes = useNotes.getState();
+    for (const n of Object.values(notes.notes)) if (n.folderId === folderId) notes.updateNote(n.id, { folderId: undefined });
+    const agents = useAgents.getState();
+    for (const r of Object.values(agents.rooms)) if (r.folderId === folderId) agents.updateRoom(r.id, { folderId: undefined });
+    const arena = useArena.getState();
+    for (const a of Object.values(arena.arenas)) if (a.folderId === folderId) arena.update(a.id, { folderId: undefined });
+    useProjects.getState().removeFolder(projectId, folderId);
+    toast.neutral(t('Folder removed'), { description: t('Its items are back in {name}.', { name: project.name }), duration: CREATED_TOAST_MS });
+  }, []);
+
+  /** List an item in a sub-folder of its project (`undefined` = the project's root). */
+  const moveToFolder = useCallback((item: { kind: 'terminal' | 'session' | 'note' | 'room' | 'arena'; id: string }, folderId: string | undefined) => {
+    let projectId: string | undefined;
+    switch (item.kind) {
+      case 'terminal': {
+        const tab = useTerminals.getState().tabs.find((x) => x.id === item.id);
+        projectId = tab?.projectId;
+        if (tab) useTerminals.getState().setFolder(tab.id, folderId);
+        break;
+      }
+      case 'session': {
+        const s = useSessions.getState().sessions[item.id];
+        projectId = s?.projectId;
+        if (s) useSessions.getState().updateSession(s.id, { folderId });
+        break;
+      }
+      case 'note': {
+        const n = useNotes.getState().notes[item.id];
+        projectId = n?.projectId;
+        if (n) useNotes.getState().updateNote(n.id, { folderId });
+        break;
+      }
+      case 'room': {
+        const r = useAgents.getState().rooms[item.id];
+        projectId = r?.projectId;
+        if (r) useAgents.getState().updateRoom(r.id, { folderId });
+        break;
+      }
+      case 'arena': {
+        const a = useArena.getState().arenas[item.id];
+        projectId = a?.projectId;
+        if (a) useArena.getState().update(a.id, { folderId });
+        break;
+      }
+    }
+    // The destination unfolds so the moved row is seen landing.
+    if (projectId && folderId) useProjects.getState().toggleFolder(projectId, folderId, true);
+  }, []);
 
   /* ------------------------------- notes ----------------------------- */
 
   /** `projectId: null` creates a note outside any project (global Notes section). */
   const newNote = useCallback(
-    (input: { projectId?: string | null; title?: string; body?: string } = {}) => {
+    (input: { projectId?: string | null; folderId?: string; title?: string; body?: string } = {}) => {
       const projectId = input.projectId === null ? undefined : (input.projectId ?? currentProject()?.id);
       if (projectId) useProjects.getState().toggleExpanded(projectId, true);
-      const note = useNotes.getState().createNote({ title: input.title, body: input.body, projectId });
+      if (projectId && input.folderId) useProjects.getState().toggleFolder(projectId, input.folderId, true);
+      const note = useNotes.getState().createNote({ title: input.title, body: input.body, projectId, folderId: projectId ? input.folderId : undefined });
       showInActivePane({ kind: 'note', noteId: note.id });
       const project = projectId ? useProjects.getState().projects.find((p) => p.id === projectId) : undefined;
       toast.success(t('Note created'), { description: project ? `In ${project.name}` : 'Outside any project', duration: CREATED_TOAST_MS });
@@ -454,10 +575,11 @@ export function useWorkspaceActions() {
 
   /** A whiteboard note (cards + links on dotted paper). */
   const newBoard = useCallback(
-    (input: { projectId?: string | null; title?: string } = {}) => {
+    (input: { projectId?: string | null; folderId?: string; title?: string } = {}) => {
       const projectId = input.projectId === null ? undefined : (input.projectId ?? currentProject()?.id);
       if (projectId) useProjects.getState().toggleExpanded(projectId, true);
-      const note = useNotes.getState().createNote({ kind: 'board', title: input.title, projectId });
+      if (projectId && input.folderId) useProjects.getState().toggleFolder(projectId, input.folderId, true);
+      const note = useNotes.getState().createNote({ kind: 'board', title: input.title, projectId, folderId: projectId ? input.folderId : undefined });
       showInActivePane({ kind: 'note', noteId: note.id });
       const project = projectId ? useProjects.getState().projects.find((p) => p.id === projectId) : undefined;
       toast.success(t('Board created'), { description: project ? `In ${project.name}` : 'Outside any project', duration: CREATED_TOAST_MS });
@@ -538,6 +660,10 @@ export function useWorkspaceActions() {
       openClaudeTerminal,
       launchClaude,
       openAgentTerminal,
+      pickProjectSubfolder,
+      newFolder,
+      removeFolder,
+      moveToFolder,
       askAgentAboutFile,
       newNote,
       newBoard,
@@ -568,6 +694,10 @@ export function useWorkspaceActions() {
       openClaudeTerminal,
       launchClaude,
       openAgentTerminal,
+      pickProjectSubfolder,
+      newFolder,
+      removeFolder,
+      moveToFolder,
       askAgentAboutFile,
       newNote,
       newBoard,

@@ -24,7 +24,7 @@ export function ClaudeLaunchDialog() {
   const setTarget = useUI((s) => s.setClaudeLaunch);
   return (
     <Dialog open={!!target} onOpenChange={(v) => !v && setTarget(null)}>
-      <DialogContent size="md">{target ? <LaunchForm projectId={target.projectId} onDone={() => setTarget(null)} /> : null}</DialogContent>
+      <DialogContent size="md">{target ? <LaunchForm projectId={target.projectId} folderId={target.folderId} onDone={() => setTarget(null)} /> : null}</DialogContent>
     </Dialog>
   );
 }
@@ -36,7 +36,7 @@ const PERMISSION_MODES: Array<{ value: ClaudeLaunchArgs['permissionMode']; label
   { value: 'bypassPermissions', label: 'Bypass permissions' },
 ];
 
-function LaunchForm({ projectId, onDone }: { projectId: string; onDone: () => void }) {
+function LaunchForm({ projectId, folderId, onDone }: { projectId: string; folderId?: string; onDone: () => void }) {
   const project = useProjects((s) => s.projects.find((p) => p.id === projectId));
   const claude = useSettings((s) => s.claude);
   const patchSettings = useSettings((s) => s.patch);
@@ -53,7 +53,7 @@ function LaunchForm({ projectId, onDone }: { projectId: string; onDone: () => vo
     if (remember) {
       patchSettings({ claude: { ...claude, defaultModel: launch.model, permissionMode: launch.permissionMode, continueLast: launch.continueLast, extraArgs: launch.extraArgs } });
     }
-    launchClaude(projectId, launch);
+    launchClaude(projectId, launch, folderId);
     onDone();
   };
 

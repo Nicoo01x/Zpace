@@ -22,6 +22,7 @@ export interface SessionsState {
     model?: string;
     contextMax?: number;
     hidden?: boolean;
+    folderId?: string;
   }) => Session;
   updateSession: (id: string, patch: Partial<Session>) => void;
   removeSession: (id: string) => void;
@@ -64,7 +65,7 @@ export const useSessions = create<SessionsState>()(
       sessions: {},
       events: {},
 
-      createSession: ({ projectId, title, providerId = 'claude-code', model = 'opus', contextMax = 1_000_000, hidden }) => {
+      createSession: ({ projectId, title, providerId = 'claude-code', model = 'opus', contextMax = 1_000_000, hidden, folderId }) => {
         const now = Date.now();
         const session: Session = {
           id: uid('ses'),
@@ -83,6 +84,7 @@ export const useSessions = create<SessionsState>()(
           archived: false,
           dirtyFiles: 0,
           ...(hidden ? { hidden: true } : {}),
+          ...(folderId ? { folderId } : {}),
         };
         set((s) => ({ sessions: { ...s.sessions, [session.id]: session }, events: { ...s.events, [session.id]: [] } }));
         return session;

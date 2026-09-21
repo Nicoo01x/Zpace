@@ -8,6 +8,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
 import { Grip } from '@/components/ui/Grip';
 import { paneDragProps } from '@/features/sessions/pane-drag';
+import { MoveToSub } from '@/features/projects/MoveToMenu';
 import { t } from '@/i18n';
 
 export const NoteRow = memo(function NoteRow({ note }: { note: Note }) {
@@ -59,6 +60,7 @@ export const NoteRow = memo(function NoteRow({ note }: { note: Note }) {
         >
           {t('Duplicate')}
         </ContextMenuItem>
+        {note.projectId ? <MoveToSub item={{ kind: 'note', id: note.id }} projectId={note.projectId} current={note.folderId} /> : null}
         <ContextMenuSeparator />
         <ContextMenuItem icon={<Trash2 />} danger onSelect={() => deleteNote(note.id)}>
           {t('Delete')}

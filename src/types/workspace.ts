@@ -17,6 +17,24 @@ export interface Project {
   createdAt: number;
   /** Sidebar expanded state. */
   expanded: boolean;
+  /** Sub-folders in the sidebar: named groups for the project's items, optionally bound to a real folder. */
+  folders?: ProjectFolder[];
+}
+
+/**
+ * A sub-folder of a project in the sidebar. With a `path` it is a real folder
+ * inside the project and the terminals and sessions created in it work there;
+ * without one it is only a way to keep things tidy.
+ */
+export interface ProjectFolder {
+  id: string;
+  name: string;
+  /** Absolute path of the folder on disk, when bound to one. */
+  path?: string;
+  /** Glyph colour; none = the project's own. */
+  color?: string;
+  expanded: boolean;
+  createdAt: number;
 }
 
 export interface GitSummary {
@@ -80,6 +98,8 @@ export interface Session {
   worktree?: { path: string; branch: string };
   /** The custom agent this session speaks as (its avatar, its instructions). */
   agentId?: string;
+  /** The project sub-folder this session is listed in (and works in, when the folder has a path). */
+  folderId?: string;
 }
 
 export interface RecentProject {
@@ -138,6 +158,8 @@ export interface TerminalTab {
   program?: { path: string; args: string[]; label: string; agent?: 'claude' | 'codex' | 'gemini' | 'opencode' };
   /** Project this terminal belongs to, if any. */
   projectId?: string;
+  /** The project sub-folder this terminal is listed in. */
+  folderId?: string;
 }
 
 export interface Note {
@@ -149,6 +171,8 @@ export interface Note {
   kind?: 'text' | 'board';
   tags: string[];
   projectId?: string;
+  /** The project sub-folder this note is listed in. */
+  folderId?: string;
   pinned: boolean;
   createdAt: number;
   updatedAt: number;

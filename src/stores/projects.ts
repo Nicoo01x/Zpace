@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { GitSummary, Project, ProjectRuntime, RecentProject } from '@/types/workspace';
+import type { GitSummary, Project, ProjectFolder, ProjectRuntime, RecentProject } from '@/types/workspace';
 import { uid } from '@/lib/id';
 import { basename } from '@/lib/format';
 
@@ -19,6 +19,12 @@ export interface ProjectsState {
   setGit: (id: string, git: GitSummary | undefined) => void;
   touch: (id: string) => void;
   setRuntime: (id: string, runtime: ProjectRuntime, wslDistro?: string) => void;
+  /** A sub-folder of the project: a name, and a real folder on disk when `path` is given. */
+  addFolder: (projectId: string, input: { name: string; path?: string }) => ProjectFolder | undefined;
+  updateFolder: (projectId: string, folderId: string, patch: Partial<Omit<ProjectFolder, 'id' | 'createdAt'>>) => void;
+  /** Drops the folder only; whoever calls it moves the folder's items back to the project first. */
+  removeFolder: (projectId: string, folderId: string) => void;
+  toggleFolder: (projectId: string, folderId: string, value?: boolean) => void;
   hydrate: (projects: Project[]) => void;
 }
 
@@ -78,6 +84,18 @@ export const useProjects = create<ProjectsState>()(
         }),
       setRuntime: (id, runtime, wslDistro) =>
         set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, runtime, wslDistro } : p)) })),
+      addFolder: (projectId, { name, path }) => {
+        if (!get().projects.some((p) => p.id === projectId)) return undefined;
+        const folder: ProjectFolder = { id: uid('fld'), name, path, expanded: true, createdAt: Date.now() };
+        set((s) => ({ projects: s.projects.map((p) => (p.id === projectId ? { ...p, folders: [...(p.folders ?? []), folder], expanded: true } : p)) }));
+        return folder;
+      },
+      updateFolder: (projectId, folderId, patch) =>
+        set((s) => ({ projects: s.projects.map((p) => (p.id === projectId ? { ...p, folders: (p.folders ?? []).map((f) => (f.id === folderId ? { ...f, ...patch } : f)) } : p)) })),
+      removeFolder: (projectId, folderId) =>
+        set((s) => ({ projects: s.projects.map((p) => (p.id === projectId ? { ...p, folders: (p.folders ?? []).filter((f) => f.id !== folderId) } : p)) })),
+      toggleFolder: (projectId, folderId, value) =>
+        set((s) => ({ projects: s.projects.map((p) => (p.id === projectId ? { ...p, folders: (p.folders ?? []).map((f) => (f.id === folderId ? { ...f, expanded: value ?? !f.expanded } : f)) } : p)) })),
       hydrate: (projects) =>
         set((s) => {
           const live = s.projects.filter((p) => !projects.some((q) => q.id === p.id) && p.createdAt >= BOOT_AT);
@@ -108,3 +126,10 @@ function upsertRecent(list: RecentProject[], item: RecentProject): RecentProject
 
 export const selectProject = (id: string | null | undefined) => (s: ProjectsState) =>
   id ? s.projects.find((p) => p.id === id) : undefined;
+
+/** The folder an item is listed in, when it still exists. */
+export const folderOf = (project: Project | undefined, folderId: string | undefined): ProjectFolder | undefined =>
+  folderId && project ? project.folders?.find((f) => f.id === folderId) : undefined;
+
+/** Where work created in a folder happens: the folder's own path when it has one, else the project's. */
+export const folderCwd = (project: Project, folderId: string | undefined): string => folderOf(project, folderId)?.path ?? project.path;

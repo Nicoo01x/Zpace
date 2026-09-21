@@ -86,6 +86,8 @@ export interface Room {
   messages: RoomMessage[];
   createdAt: number;
   updatedAt: number;
+  /** The project sub-folder this room is listed in. */
+  folderId?: string;
 }
 
 export type AgentDraft = Omit<CustomAgent, 'id' | 'createdAt' | 'updatedAt'>;

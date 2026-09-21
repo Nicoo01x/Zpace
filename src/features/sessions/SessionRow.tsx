@@ -20,7 +20,9 @@ import { runtime } from '@/providers/runtime';
 import { AgentGlyph } from '@/features/agent/AgentGlyph';
 import { Grip } from '@/components/ui/Grip';
 import { paneDragProps } from '@/features/sessions/pane-drag';
+import { MoveToSub } from '@/features/projects/MoveToMenu';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * Session row:   ⁝⁝  Production deployment setup            ✱
@@ -161,6 +163,7 @@ export const SessionRow = memo(function SessionRow({ session, active }: { sessio
             >
               {t('Rename')}
             </ContextMenuItem>
+            <MoveToSub item={{ kind: 'session', id: session.id }} projectId={session.projectId} current={session.folderId} />
             <ContextMenuItem icon={session.pinned ? <PinOff /> : <Pin />} onSelect={() => update(session.id, { pinned: !session.pinned })}>
               {session.pinned ? t('Unpin') : t('Pin')}
             </ContextMenuItem>
@@ -197,7 +200,7 @@ export const SessionRow = memo(function SessionRow({ session, active }: { sessio
               icon={<ExternalLink />}
               disabled={!session.providerSessionId}
               onSelect={() => {
-                void navigator.clipboard.writeText(session.providerSessionId ?? '');
+                void copyText(session.providerSessionId ?? '');
               }}
             >
               {t('Copy session id')}

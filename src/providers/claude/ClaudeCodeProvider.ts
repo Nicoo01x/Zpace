@@ -3,6 +3,7 @@ import type { Attachment, PermissionDecision, SessionUsage } from '@/types/agent
 import { ClaudeAdapter, type ClaudeControlRequest } from './ClaudeAdapter';
 import { onProcessExit, onProcessLine, processKill, processSpawn, processWrite } from '@/native/process';
 import { toWslPath } from '@/native/system';
+import { folderCwd } from '@/stores/projects';
 import { uid } from '@/lib/id';
 
 /**
@@ -85,8 +86,8 @@ export class ClaudeCodeProvider implements AgentProvider {
     if (providerSessionId) args.push('--resume', providerSessionId);
 
     let program = ctx.binaryPath || 'claude';
-    // A session in a worktree works there: its own checkout, its own branch.
-    const root = ctx.session.worktree?.path ?? ctx.project.path;
+    // A session in a worktree works there: its own checkout, its own branch. One in a sub-folder bound to disk works in that folder.
+    const root = ctx.session.worktree?.path ?? folderCwd(ctx.project, ctx.session.folderId);
     let cwd = root;
     let finalArgs = args;
     if (ctx.project.runtime === 'wsl') {

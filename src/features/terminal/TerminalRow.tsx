@@ -17,7 +17,9 @@ import { revealInFileManager } from '@/native/system';
 import { PixelGrid } from '@/components/ui/LoadingState';
 import { useTerminalActivity } from './activity';
 import { paneDragProps } from '@/features/sessions/pane-drag';
+import { MoveToSub } from '@/features/projects/MoveToMenu';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 /** Sidebar row for a terminal: shell glyph, title, live dot when a PTY is attached. */
 export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab }) {
@@ -147,6 +149,7 @@ export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab
             >
               {t('Rename')}
             </ContextMenuItem>
+            {tab.projectId ? <MoveToSub item={{ kind: 'terminal', id: tab.id }} projectId={tab.projectId} current={tab.folderId} /> : null}
             {tab.cwd ? (
               <>
                 <ContextMenuItem icon={<FolderOpen />} onSelect={() => void revealInFileManager(tab.cwd)}>
@@ -155,7 +158,7 @@ export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab
                 <ContextMenuItem
                   icon={<Copy />}
                   onSelect={() => {
-                    void navigator.clipboard.writeText(tab.cwd);
+                    void copyText(tab.cwd);
                     toast.neutral(t('Path copied'));
                   }}
                 >

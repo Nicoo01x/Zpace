@@ -318,9 +318,10 @@ export function Sidebar() {
 
 /* ------------------------------------------------------------------ */
 
-/** True when a session, terminal or note inside the project matches the filter. */
+/** True when a folder, session, terminal or note inside the project matches the filter. */
 function projectHasMatch(projectId: string, needle: string): boolean {
   const n = needle.toLowerCase();
+  if (useProjects.getState().projects.find((p) => p.id === projectId)?.folders?.some((f) => f.name.toLowerCase().includes(n))) return true;
   if (Object.values(useSessions.getState().sessions).some((x) => x.projectId === projectId && !x.archived && x.title.toLowerCase().includes(n))) return true;
   if (useTerminals.getState().tabs.some((t) => t.projectId === projectId && t.title.toLowerCase().includes(n))) return true;
   return Object.values(useNotes.getState().notes).some((x) => x.projectId === projectId && noteTitle(x).toLowerCase().includes(n));

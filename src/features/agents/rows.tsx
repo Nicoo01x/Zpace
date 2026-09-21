@@ -12,6 +12,9 @@ import { chatWithAgent, openRoom } from './room-runtime';
 import { useSubagentEditor } from './editor';
 import { ClaudeLogo } from '@/features/agent/BrandIcon';
 import type { AssetInfo } from '@/stores/capabilities';
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/ContextMenu';
+import { paneDragProps } from '@/features/sessions/pane-drag';
+import { MoveToSub } from '@/features/projects/MoveToMenu';
 
 /** An agent in the sidebar: click chats with it in the current project, the pencil edits it. */
 export function AgentRow({ agent }: { agent: CustomAgent }) {
@@ -51,22 +54,35 @@ export function RoomRow({ room, agents }: { room: Room; agents: CustomAgent[] })
   const busy = useSessions(useShallow((s) => Object.values(room.sessions).filter((sid) => ['running', 'waiting'].includes(s.sessions[sid]?.status ?? '')).length));
   const shown = useUI((s) => collectLeaves(s.layout).some((l) => l.content.kind === 'room' && l.content.roomId === room.id && l.id === s.activePaneId));
   return (
-    <button type="button" onClick={() => openRoom(room.id)} title={agents.map((a) => a.name).join(', ')} className={cn('flex h-(--row-height) w-full items-center gap-2 rounded-lg pl-2.5 pr-2 text-left text-ui transition-colors duration-(--motion-fast) hover:bg-surface-hover', shown ? 'bg-surface-active text-primary' : 'text-secondary hover:text-primary')}>
-      <span className="inline-flex w-5 shrink-0 items-center justify-center">
-        <Users className="size-[14px] text-accent" />
-      </span>
-      <span className="min-w-0 flex-1 truncate">{room.name}</span>
-      {busy ? (
-        <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-accent-warm">
-          <AgentGlyph active className="size-[11px]" /> {busy}
-        </span>
-      ) : (
-        <span className="flex shrink-0 -space-x-1">
-          {agents.slice(0, 4).map((a) => (
-            <AgentAvatar key={a.id} agent={a} size={14} ring />
-          ))}
-        </span>
-      )}
-    </button>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={() => openRoom(room.id)}
+          title={agents.map((a) => a.name).join(', ')}
+          {...paneDragProps({ kind: 'room', roomId: room.id }, room.name)}
+          className={cn('flex h-(--row-height) w-full items-center gap-2 rounded-lg pl-2.5 pr-2 text-left text-ui transition-colors duration-(--motion-fast) hover:bg-surface-hover', shown ? 'bg-surface-active text-primary' : 'text-secondary hover:text-primary')}
+        >
+          <span className="inline-flex w-5 shrink-0 items-center justify-center">
+            <Users className="size-[14px] text-accent" />
+          </span>
+          <span className="min-w-0 flex-1 truncate">{room.name}</span>
+          {busy ? (
+            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-accent-warm">
+              <AgentGlyph active className="size-[11px]" /> {busy}
+            </span>
+          ) : (
+            <span className="flex shrink-0 -space-x-1">
+              {agents.slice(0, 4).map((a) => (
+                <AgentAvatar key={a.id} agent={a} size={14} ring />
+              ))}
+            </span>
+          )}
+        </button>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="min-w-[180px]">
+        <MoveToSub item={{ kind: 'room', id: room.id }} projectId={room.projectId} current={room.folderId} />
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

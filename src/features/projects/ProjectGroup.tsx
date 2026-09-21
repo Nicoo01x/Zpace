@@ -1,18 +1,18 @@
 import { memo, useState } from 'react';
 import { Reorder, useDragControls } from 'motion/react';
 import { useShallow } from 'zustand/react/shallow';
-import { Folder, FolderOpen, Plus, Terminal, Pencil, Settings2, X, ExternalLink, MoreHorizontal, Sparkles, NotebookPen, GitBranch, SlidersHorizontal, Eye, LayoutDashboard, FolderTree, Globe, Swords, Users } from 'lucide-react';
+import { FolderOpen, Plus, Terminal, Pencil, Settings2, X, ExternalLink, MoreHorizontal, Sparkles, NotebookPen, GitBranch, SlidersHorizontal, Eye, LayoutDashboard, FolderTree, Globe, Swords, Users, FolderPlus, FolderSymlink } from 'lucide-react';
 import { useBrowserMemory } from '@/stores/browser-memory';
 import { cn } from '@/lib/cn';
-import type { Project } from '@/types/workspace';
+import type { Project, ProjectFolder } from '@/types/workspace';
 import { useProjects } from '@/stores/projects';
 import { useSessions, sessionsForProject } from '@/stores/sessions';
 import { useTerminals } from '@/stores/terminals';
 import { useNotes, sortedNotes, noteTitle } from '@/stores/notes';
 import { useUI } from '@/stores/ui';
 import { LivingItem, LivingList, LivingReveal, Swap } from '@/components/ui/Living';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from '@/components/ui/ContextMenu';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/DropdownMenu';
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/ContextMenu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/DropdownMenu';
 import { ShellIcon } from '@/features/terminal/ShellIcon';
 import { useSettings } from '@/stores/settings';
 import { StatusDot } from '@/components/ui/StatusDot';
@@ -32,22 +32,14 @@ import { openPath, revealInFileManager } from '@/native/system';
 import { springs } from '@/lib/motion';
 import { isWindows } from '@/lib/platform';
 import { t } from '@/i18n';
-import { PROJECT_COLORS } from './colors';
 import { MacFolder } from '@/components/ui/MacFolder';
 import { askText } from '@/stores/prompt';
-import { ColorDot } from '@/components/ui/ColorDot';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { FolderColourRow } from './FolderColourRow';
+import { FolderGroup } from './FolderGroup';
+import { folderDropProps, locateItem } from './folder-items';
+import { CONTEXT_KIT, DROPDOWN_KIT, type MenuKit } from './menu-kit';
 
-/** The menu components of one family (context or dropdown), so one JSX tree serves both. */
-interface MenuKit {
-  Item: typeof ContextMenuItem;
-  Sep: typeof ContextMenuSeparator;
-  Sub: typeof ContextMenuSub;
-  SubTrigger: typeof ContextMenuSubTrigger;
-  SubContent: typeof ContextMenuSubContent;
-}
-const CONTEXT_KIT: MenuKit = { Item: ContextMenuItem, Sep: ContextMenuSeparator, Sub: ContextMenuSub, SubTrigger: ContextMenuSubTrigger, SubContent: ContextMenuSubContent };
-const DROPDOWN_KIT = { Item: DropdownMenuItem, Sep: DropdownMenuSeparator, Sub: DropdownMenuSub, SubTrigger: DropdownMenuSubTrigger, SubContent: DropdownMenuSubContent } as unknown as MenuKit;
+const NO_FOLDERS: ProjectFolder[] = [];
 
 /**
  * Project group row:  [folder]  name                       ·
@@ -59,24 +51,26 @@ export const ProjectGroup = memo(function ProjectGroup({ project }: { project: P
   const setColor = useProjects((s) => s.setColor);
   const needle = useUI((s) => s.sidebarFilter.trim().toLowerCase());
   const nameMatches = !needle || project.name.toLowerCase().includes(needle);
-  // While filtering, a project whose own name matches shows everything; otherwise only matching children.
-  const keep = (title: string) => nameMatches || title.toLowerCase().includes(needle);
-  const sessions = useSessions(useShallow((s) => sessionsForProject(s.sessions, project.id).filter((x) => keep(x.title))));
-  const terminals = useTerminals(useShallow((s) => s.tabs.filter((t) => t.projectId === project.id && keep(t.title))));
-  const notes = useNotes(useShallow((s) => sortedNotes(s.notes).filter((n) => n.projectId === project.id && keep(noteTitle(n)))));
+  const folders = project.folders ?? NO_FOLDERS;
+  const folderMatches = (folderId: string | undefined) => !!needle && !!folderId && (folders.find((f) => f.id === folderId)?.name.toLowerCase().includes(needle) ?? false);
+  // While filtering, a project (or a folder) whose own name matches shows everything in it; otherwise only matching children.
+  const keep = (title: string, folderId?: string) => nameMatches || title.toLowerCase().includes(needle) || folderMatches(folderId);
+  const sessions = useSessions(useShallow((s) => sessionsForProject(s.sessions, project.id).filter((x) => keep(x.title, x.folderId))));
+  const terminals = useTerminals(useShallow((s) => s.tabs.filter((t) => t.projectId === project.id && keep(t.title, t.folderId))));
+  const notes = useNotes(useShallow((s) => sortedNotes(s.notes).filter((n) => n.projectId === project.id && keep(noteTitle(n), n.folderId))));
   const activeSessionId = useUI((s) => s.activeSessionId);
   const activeProjectId = useUI((s) => s.activeProjectId);
   const setActiveProject = useUI((s) => s.setActiveProject);
   const openSettings = useUI((s) => s.openSettings);
-  const { newSession, newWorktreeSession, openTerminalPane, openClaudeTerminal, openAgentTerminal, newNote, newBoard, openProjectBoard, closeProject, openBrowser } = useWorkspaceActions();
+  const { newSession, newWorktreeSession, openTerminalPane, openClaudeTerminal, openAgentTerminal, newNote, newBoard, openProjectBoard, closeProject, openBrowser, newFolder, moveToFolder } = useWorkspaceActions();
   /** Branch name → a session on its own worktree. */
   const askBranch = async (pid: string) => {
     const branch = await askText({ title: t('New session in a worktree…'), description: t('A checkout of its own beside the project folder; the branch is created if it does not exist — add "from main" to branch off something other than HEAD.'), placeholder: 'feature/… from main', confirm: t('Create') });
     if (branch) await newWorktreeSession(pid, branch);
   };
-  const arenas = useArena(useShallow((s) => arenasFor(s.arenas, project.id).filter((a) => keep(a.title))));
+  const arenas = useArena(useShallow((s) => arenasFor(s.arenas, project.id).filter((a) => keep(a.title, a.folderId))));
   const openArenaLauncher = useArenaLauncher((s) => s.open);
-  const rooms = useAgents(useShallow((s) => roomsFor(s.rooms, project.id).filter((r) => keep(r.name))));
+  const rooms = useAgents(useShallow((s) => roomsFor(s.rooms, project.id).filter((r) => keep(r.name, r.folderId))));
   const allAgents = useAgents((s) => s.agents);
   const agentsOf = (r: (typeof rooms)[number]) => r.agentIds.map((id) => allAgents[id]).filter((a): a is CustomAgent => !!a);
   const openRoomLauncher = useRoomLauncher((s) => s.open);
@@ -92,14 +86,71 @@ export const ProjectGroup = memo(function ProjectGroup({ project }: { project: P
   const controls = useDragControls();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(project.name);
+  const [over, setOver] = useState(false);
 
   const running = sessions.filter((s) => s.status === 'running').length;
   const waiting = sessions.filter((s) => s.status === 'waiting').length;
   const errored = sessions.some((s) => s.status === 'error');
   const isActiveProject = sessions.some((s) => s.id === activeSessionId);
-  const childCount = rooms.length + sessions.length + terminals.length + notes.length + (browsed ? 1 : 0);
+
+  // Items file under their folder while it exists; anything pointing at a folder that is gone is back at the root.
+  const known = new Set(folders.map((f) => f.id));
+  const inFolder = (folderId: string | undefined) => (folderId && known.has(folderId) ? folderId : undefined);
+  const rows = (folderId: string | undefined) => ({
+    arenas: arenas.filter((a) => inFolder(a.folderId) === folderId),
+    rooms: rooms.filter((r) => inFolder(r.folderId) === folderId),
+    sessions: sessions.filter((s) => inFolder(s.folderId) === folderId),
+    terminals: terminals.filter((x) => inFolder(x.folderId) === folderId),
+    notes: notes.filter((n) => inFolder(n.folderId) === folderId),
+  });
+  const root = rows(undefined);
+  const grouped = folders.map((f) => ({ folder: f, ...rows(f.id) }));
+  const countOf = (g: ReturnType<typeof rows>) => g.arenas.length + g.rooms.length + g.sessions.length + g.terminals.length + g.notes.length;
+  // While filtering, a folder shows when its own name matches or something inside it does; otherwise every folder, empty or not.
+  const shownFolders = grouped.filter((g) => !needle || nameMatches || g.folder.name.toLowerCase().includes(needle) || countOf(g) > 0);
+  const childCount = countOf(root) + shownFolders.length + (browsed ? 1 : 0);
   // A filter that hits something inside the project unfolds it so the match is visible.
   const expanded = (project.expanded || (!!needle && !nameMatches)) && childCount > 0;
+
+  /** A row dragged onto the project row leaves its folder. */
+  const drop = folderDropProps(
+    (item) => {
+      const at = locateItem(item);
+      return !!at && at.projectId === project.id && !!inFolder(at.folderId);
+    },
+    (item) => moveToFolder(item, undefined),
+    setOver,
+  );
+
+  const childRows = (g: ReturnType<typeof rows>) => (
+    <>
+      {g.arenas.map((a) => (
+        <LivingItem key={`arena:${a.id}`}>
+          <ArenaRow arena={a} />
+        </LivingItem>
+      ))}
+      {g.rooms.map((r) => (
+        <LivingItem key={`room:${r.id}`}>
+          <RoomRow room={r} agents={agentsOf(r)} />
+        </LivingItem>
+      ))}
+      {g.sessions.map((s) => (
+        <LivingItem key={`session:${s.id}`}>
+          <SessionRow session={s} active={s.id === activeSessionId} />
+        </LivingItem>
+      ))}
+      {g.terminals.map((x) => (
+        <LivingItem key={`terminal:${x.id}`}>
+          <TerminalRow tab={x} />
+        </LivingItem>
+      ))}
+      {g.notes.map((n) => (
+        <LivingItem key={`note:${n.id}`}>
+          <NoteRow note={n} />
+        </LivingItem>
+      ))}
+    </>
+  );
 
   /** Click selects the project as context and toggles its sessions; it never creates anything. */
   const activate = () => {
@@ -192,6 +243,13 @@ export const ProjectGroup = memo(function ProjectGroup({ project }: { project: P
           <M.Item icon={<Globe />} onSelect={() => openBrowser(undefined, 'pane', project.id)}>
             {t('Browser here')}
           </M.Item>
+          <M.Sep />
+          <M.Item icon={<FolderPlus />} onSelect={() => void newFolder(project.id)}>
+            {t('Folder…')}
+          </M.Item>
+          <M.Item icon={<FolderSymlink />} onSelect={() => void newFolder(project.id, { fromDisk: true })}>
+            {t('Folder from disk…')}
+          </M.Item>
         </M.SubContent>
       </M.Sub>
       <M.Sep />
@@ -220,35 +278,7 @@ export const ProjectGroup = memo(function ProjectGroup({ project }: { project: P
       >
         {t('Rename')}
       </M.Item>
-      <div className="px-2 pb-1.5 pt-1">
-        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.04em] text-muted">{t('Folder colour')}</div>
-        <div role="group" aria-label={t('Folder colour')} className="flex items-center gap-1.5">
-          <Tooltip content={t('None')} side="bottom">
-            <button
-              type="button"
-              aria-pressed={!project.color}
-              aria-label={t('None')}
-              onClick={() => setColor(project.id, undefined)}
-              className={cn('inline-flex size-[18px] items-center justify-center rounded-full text-muted transition-transform hover:scale-110', !project.color && 'ring-2 ring-[var(--text-primary)] ring-offset-1 ring-offset-[var(--surface-raised)]')}
-            >
-              <Folder className="size-[13px]" strokeWidth={1.75} />
-            </button>
-          </Tooltip>
-          {PROJECT_COLORS.map((c) => (
-            <Tooltip key={c.id} content={t(c.label)} side="bottom">
-              <button
-                type="button"
-                aria-pressed={project.color === c.value}
-                aria-label={t(c.label)}
-                onClick={() => setColor(project.id, c.value)}
-                style={{ backgroundColor: c.value }}
-                className={cn('size-[18px] rounded-full transition-transform hover:scale-110', project.color === c.value && 'ring-2 ring-[var(--text-primary)] ring-offset-1 ring-offset-[var(--surface-raised)]')}
-              />
-            </Tooltip>
-          ))}
-          <ColorDot value={project.color} custom={!!project.color && !PROJECT_COLORS.some((c) => c.value === project.color)} onChange={(hex) => setColor(project.id, hex)} />
-        </div>
-      </div>
+      <FolderColourRow value={project.color} onChange={(color) => setColor(project.id, color)} />
       <M.Sub>
         <M.SubTrigger icon={<ExternalLink />}>{t('System')}</M.SubTrigger>
         <M.SubContent>
@@ -307,10 +337,12 @@ export const ProjectGroup = memo(function ProjectGroup({ project }: { project: P
                 setEditing(true);
               }
             }}
+            {...drop}
             className={cn(
               'group/project flex h-(--row-height) select-none items-center gap-2.5 rounded-lg pl-2.5 pr-2 text-ui outline-none transition-colors duration-(--motion-fast)',
               'hover:bg-surface-hover focus-visible:bg-surface-hover',
               activeProjectId === project.id && !isActiveProject ? 'bg-surface-hover text-primary' : 'text-primary',
+              over && 'bg-accent-soft shadow-[inset_0_0_0_1px_var(--accent)]',
             )}
           >
             <button
@@ -323,7 +355,7 @@ export const ProjectGroup = memo(function ProjectGroup({ project }: { project: P
               }}
               className="inline-flex size-5 shrink-0 items-center justify-center rounded-[4px] transition-[filter] duration-(--motion-fast) hover:brightness-110"
             >
-              <MacFolder color={project.color || undefined} open={expanded} size={17} />
+              <MacFolder color={project.color || undefined} open={expanded || over} size={17} />
             </button>
 
             <Swap k={editing ? 'edit' : 'label'} className="flex min-w-0 flex-1 items-center">
@@ -418,6 +450,13 @@ export const ProjectGroup = memo(function ProjectGroup({ project }: { project: P
                     <DropdownMenuItem icon={<Globe />} onSelect={() => openBrowser(undefined, 'pane', project.id)}>
                       {t('Browser here')}
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem icon={<FolderPlus />} onSelect={() => void newFolder(project.id)}>
+                      {t('Folder…')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem icon={<FolderSymlink />} onSelect={() => void newFolder(project.id, { fromDisk: true })}>
+                      {t('Folder from disk…')}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>
@@ -445,31 +484,14 @@ export const ProjectGroup = memo(function ProjectGroup({ project }: { project: P
 
       <LivingReveal open={expanded}>
         <LivingList role="group" className="flex flex-col gap-[3px] py-[3px] pl-3">
-          {arenas.map((a) => (
-            <LivingItem key={`arena:${a.id}`}>
-              <ArenaRow arena={a} />
+          {shownFolders.map((g) => (
+            <LivingItem key={`folder:${g.folder.id}`}>
+              <FolderGroup project={project} folder={g.folder} count={countOf(g)} running={g.sessions.filter((s) => s.status === 'running').length} waiting={g.sessions.filter((s) => s.status === 'waiting').length} errored={g.sessions.some((s) => s.status === 'error')}>
+                {childRows(g)}
+              </FolderGroup>
             </LivingItem>
           ))}
-          {rooms.map((r) => (
-            <LivingItem key={`room:${r.id}`}>
-              <RoomRow room={r} agents={agentsOf(r)} />
-            </LivingItem>
-          ))}
-          {sessions.map((s) => (
-            <LivingItem key={`session:${s.id}`}>
-              <SessionRow session={s} active={s.id === activeSessionId} />
-            </LivingItem>
-          ))}
-          {terminals.map((t) => (
-            <LivingItem key={`terminal:${t.id}`}>
-              <TerminalRow tab={t} />
-            </LivingItem>
-          ))}
-          {notes.map((n) => (
-            <LivingItem key={`note:${n.id}`}>
-              <NoteRow note={n} />
-            </LivingItem>
-          ))}
+          {childRows(root)}
           {browsed && keep(browsed.title || browsed.url) ? (
             <LivingItem key="browser">
               <BrowserRow url={browsed.url} title={browsed.title} onOpen={() => openBrowser(browsed.url, 'pane', project.id)} onForget={() => forgetBrowsed(project.id)} />

@@ -6,7 +6,7 @@ import { t } from '@/i18n';
 
 export interface NotesState {
   notes: Record<string, Note>;
-  createNote: (input?: Partial<Pick<Note, 'title' | 'body' | 'projectId' | 'tags' | 'kind'>>) => Note;
+  createNote: (input?: Partial<Pick<Note, 'title' | 'body' | 'projectId' | 'folderId' | 'tags' | 'kind'>>) => Note;
   updateNote: (id: string, patch: Partial<Omit<Note, 'id' | 'createdAt'>>) => void;
   removeNote: (id: string) => void;
   duplicateNote: (id: string) => Note | undefined;
@@ -35,6 +35,7 @@ export const useNotes = create<NotesState>()(
           kind: input.kind ?? 'text',
           tags: input.tags ?? [],
           projectId: input.projectId,
+          folderId: input.folderId,
           pinned: false,
           createdAt: now,
           updatedAt: now,

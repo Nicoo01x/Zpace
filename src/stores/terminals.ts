@@ -7,9 +7,11 @@ import { uid } from '@/lib/id';
 export interface TerminalsState {
   tabs: TerminalTab[];
   activeTabId: string | null;
-  createTab: (input: { shellId: string; cwd: string; title?: string; program?: TerminalTab['program']; projectId?: string }) => TerminalTab;
+  createTab: (input: { shellId: string; cwd: string; title?: string; program?: TerminalTab['program']; projectId?: string; folderId?: string }) => TerminalTab;
   closeTab: (id: string) => void;
   renameTab: (id: string, title: string) => void;
+  /** List the tab in a project sub-folder (undefined = back at the project's root). */
+  setFolder: (id: string, folderId: string | undefined) => void;
   setActive: (id: string) => void;
   setPty: (id: string, ptyId: string | undefined) => void;
   hydrate: (tabs: TerminalTab[]) => void;
@@ -26,7 +28,7 @@ export const useTerminals = create<TerminalsState>()(
     (set, get) => ({
       tabs: [],
       activeTabId: null,
-      createTab: ({ shellId, cwd, title, program, projectId }) => {
+      createTab: ({ shellId, cwd, title, program, projectId, folderId }) => {
         const tab: TerminalTab = {
           id: uid('term'),
           title: title ?? program?.label ?? shellId,
@@ -34,6 +36,7 @@ export const useTerminals = create<TerminalsState>()(
           cwd,
           program,
           projectId,
+          folderId,
           createdAt: Date.now(),
         };
         set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }));
@@ -49,6 +52,7 @@ export const useTerminals = create<TerminalsState>()(
         });
       },
       renameTab: (id, title) => set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, title } : t)) })),
+      setFolder: (id, folderId) => set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, folderId } : t)) })),
       setActive: (id) => set({ activeTabId: id }),
       setPty: (id, ptyId) => {
         if (!get().tabs.some((t) => t.id === id)) return;

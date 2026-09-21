@@ -43,6 +43,8 @@ export interface Arena {
   variants: ArenaVariant[];
   /** Set when a variant was merged into the project. */
   mergedAt?: number;
+  /** The project sub-folder this arena is listed in. */
+  folderId?: string;
 }
 
 interface ArenaState {
