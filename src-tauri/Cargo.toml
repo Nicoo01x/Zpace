@@ -39,6 +39,10 @@ log = "0.4"
 ureq = { version = "2", features = ["json"] }
 notify = "7"
 regex = "1"
+# the voice assistant's MCP server (loopback HTTP, no async runtime)
+tiny_http = "0.12"
+# the voice assistant's microphone (the system default input, any format)
+cpal = "0.15"
 
 # screenshots + the clipboard image: every platform
 png = "0.17"
@@ -48,7 +52,7 @@ arboard = { version = "3", default-features = false, features = ["image-data"] }
 webview2-com = "0.38"
 windows-core = "0.61"
 windows = { version = "0.61", features = [
-  "Media_SpeechRecognition", "Media_Control", "Storage_Streams", "Globalization", "Foundation", "Foundation_Collections", "Win32_System_WinRT",
+  "Media_SpeechRecognition", "Media_Control", "Media_Devices", "Devices_Enumeration", "Storage_Streams", "Globalization", "Foundation", "Foundation_Collections", "Win32_System_WinRT",
   # the desktop island: Action Center, app logos, the foreground window and its icon, Core Audio, the battery, the clipboard
   "UI_Notifications", "UI_Notifications_Management", "ApplicationModel",
   "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Accessibility", "Win32_UI_Shell", "Win32_Graphics_Gdi",

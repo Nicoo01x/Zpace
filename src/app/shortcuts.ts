@@ -7,6 +7,7 @@ export interface ShortcutDef {
 /** Single source of truth for global shortcuts (used by the handler and the settings page). */
 export const SHORTCUTS: ShortcutDef[] = [
   { id: 'spotlight', combo: 'mod+space', label: 'Spotlight: files, commands, notes, web' },
+  { id: 'voice', combo: 'mod+shift+space', label: 'Talk to Zpace (voice)' },
   { id: 'stack', combo: 'ctrl+tab', label: 'Window stack: cycle open panes' },
   { id: 'palette', combo: 'mod+k', label: 'Command palette' },
   { id: 'commands', combo: 'mod+shift+p', label: 'Commands' },

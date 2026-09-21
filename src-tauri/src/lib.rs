@@ -40,6 +40,8 @@ pub fn run() {
         .manage(WatchState::default())
         .manage(commands::updater::PendingUpdate::default())
         .manage(commands::desktop::DesktopState::default())
+        .manage(commands::mcp::McpState::default())
+        .manage(commands::listen::ListenState::default())
         .setup(|app| {
             // The name the OS shows (taskbar, Alt+Tab, notifications) — whatever a platform config override left it at.
             if let Some(w) = app.get_webview_window("main") {
@@ -125,6 +127,8 @@ pub fn run() {
             commands::media::media_control,
             commands::capture::capture_region_to_file,
             commands::capture::clipboard_write_png,
+            commands::capture::clipboard_write_text,
+            commands::capture::clipboard_read_text,
             commands::capture::write_png,
             commands::assets::scan_agent_assets,
             commands::pty::pty_spawn,
@@ -136,6 +140,18 @@ pub fn run() {
             commands::process::process_kill,
             commands::search::search_text,
             commands::speech::speech_recognize,
+            commands::speech::speech_languages,
+            commands::speech::speech_probe,
+            commands::speech::speech_mic_probe,
+            commands::mcp::mcp_start,
+            commands::mcp::mcp_set_tools,
+            commands::mcp::mcp_reply,
+            commands::listen::voice_ready,
+            commands::listen::voice_setup,
+            commands::listen::voice_listen,
+            commands::listen::voice_cancel,
+            commands::listen::voice_devices,
+            commands::listen::voice_meter,
             commands::watch::watch_path,
             commands::watch::unwatch_path,
             commands::git::git_worktrees,

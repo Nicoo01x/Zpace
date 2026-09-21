@@ -9,7 +9,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { LivingBox, LivingItem, LivingReveal } from '@/components/ui/Living';
-import { openUrl } from '@/native/system';
+import { openWindowsSettings } from '@/native/system';
 import { isTauri, isWindows } from '@/lib/platform';
 import { ZorynqMark } from '@/features/brand/ZorynqMark';
 import { springs } from '@/lib/motion';
@@ -152,7 +152,7 @@ export function DesktopIslandSection() {
         <LivingReveal open={d.modules.windows && system}>
           <div className="flex items-center justify-between gap-6 py-2 pl-4 hairline-b">
             <div className="text-[12px] leading-snug text-secondary">{t('If nothing arrives, Windows is keeping them: allow Zpace under Settings › Privacy › Notifications.')}</div>
-            <Button size="xs" variant="ghost" trailing={<ExternalLink className="size-3" />} onClick={() => void openUrl('ms-settings:privacy-notifications')}>
+            <Button size="xs" variant="ghost" trailing={<ExternalLink className="size-3" />} onClick={() => void openWindowsSettings('privacy-notifications')}>
               {t('Open Windows settings')}
             </Button>
           </div>

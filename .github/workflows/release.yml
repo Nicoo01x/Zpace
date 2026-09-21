@@ -40,11 +40,11 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      - name: Linux packages the webview needs
+      - name: Linux packages the webview and the microphone (cpal → ALSA) need
         if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev libxdo-dev libssl-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev libxdo-dev libssl-dev libasound2-dev
       - run: npm ci
       - uses: tauri-apps/tauri-action@v0
         env:

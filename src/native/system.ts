@@ -49,14 +49,15 @@ export function fromWslPath(wslPath: string): string {
   return `${m[1].toUpperCase()}:\\${m[2].replace(/\//g, '\\')}`;
 }
 
-export async function pickFolder(title = 'Open project'): Promise<string | null> {
+/** `defaultPath` opens the picker inside that folder (a project, when choosing one of its sub-folders). */
+export async function pickFolder(title = 'Open project', defaultPath?: string): Promise<string | null> {
   if (!isTauri) {
     // Browser preview: fake a folder pick.
-    const name = window.prompt('Folder path (browser preview)', 'C:\\Users\\dev\\projects\\new-project');
+    const name = window.prompt('Folder path (browser preview)', defaultPath ?? 'C:\\Users\\dev\\projects\\new-project');
     return name || null;
   }
   const { open } = await import('@tauri-apps/plugin-dialog');
-  const res = await open({ directory: true, multiple: false, title });
+  const res = await open({ directory: true, multiple: false, title, defaultPath });
   return typeof res === 'string' ? res : null;
 }
 
@@ -81,6 +82,17 @@ export async function openPath(path: string): Promise<void> {
   if (!isTauri) return;
   const { openPath: op } = await import('@tauri-apps/plugin-opener');
   await op(path);
+}
+
+/** A page of Windows Settings (`privacy-speech`, `privacy-microphone`, …): the `ms-settings:` scheme through the shell. */
+export async function openWindowsSettings(page: string): Promise<void> {
+  const uri = `ms-settings:${page}`;
+  try {
+    await openUrl(uri);
+  } catch {
+    // The opener's URL scope is for the web; as a "path" the shell resolves the scheme itself.
+    await openPath(uri);
+  }
 }
 
 export async function openUrl(url: string): Promise<void> {

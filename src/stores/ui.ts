@@ -14,6 +14,7 @@ export type SettingsSection =
   | 'mascot'
   | 'notifications'
   | 'island'
+  | 'voice'
   | 'automations'
   | 'mcp'
   | 'keyboard'
@@ -56,7 +57,7 @@ export interface UIState {
   /** Folder picked for a project that is being added (name + colour dialog). */
   newProject: { path: string } | null;
   /** Claude Code launch dialog target (project already resolved). */
-  claudeLaunch: { projectId: string } | null;
+  claudeLaunch: { projectId: string; folderId?: string } | null;
   sidebarSections: { projects: boolean; agents: boolean; terminals: boolean; notes: boolean; plugins: boolean };
   /** Sidebar filter (Ctrl+Shift+S): narrows projects, sessions, terminals and notes by title. */
   sidebarFilterOpen: boolean;
@@ -98,7 +99,7 @@ export interface UIState {
   setSummaryOpen: (v: boolean) => void;
   setCloneOpen: (v: boolean) => void;
   setNewProject: (v: { path: string } | null) => void;
-  setClaudeLaunch: (v: { projectId: string } | null) => void;
+  setClaudeLaunch: (v: { projectId: string; folderId?: string } | null) => void;
   toggleSection: (s: 'projects' | 'agents' | 'terminals' | 'notes' | 'plugins') => void;
   setSidebarFilterOpen: (v: boolean) => void;
   setSidebarFilter: (q: string) => void;

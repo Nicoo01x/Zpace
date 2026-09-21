@@ -24,6 +24,8 @@ import { bootPlugins, install as installPlugin, uninstall as uninstallPlugin, re
 import { getTerminal } from '@/features/terminal/registry';
 import { pluginCommands } from '@/features/plugins/runtime';
 import { watchDesktopIsland } from '@/features/island/desktop/bridge';
+import { useVoice } from '@/features/voice/store';
+import { voiceText, dismissVoice } from '@/features/voice/agent';
 
 import { usePlugins } from '@/stores/plugins';
 import { resolveFontStack } from '@/lib/fonts';
@@ -65,7 +67,7 @@ export async function bootstrap() {
   }, 350);
   if (import.meta.env.DEV) {
     // Automation hook for dev/e2e scripts only (never shipped in production builds).
-    (window as unknown as { __conduit?: unknown }).__conduit = { useProjects, useSessions, useUI, useSettings, useTerminals, useNotes, useEnvironment, useTouched, useMargin, useNotifications, useArena, useAgents, useUpdate, usePlugins, useFloats, seedMockWorkspace, dev: { pluginCommands, installPlugin, uninstallPlugin, refreshIndex, applyPack, allPacks, getTerminal } };
+    (window as unknown as { __conduit?: unknown }).__conduit = { useProjects, useSessions, useUI, useSettings, useTerminals, useNotes, useEnvironment, useTouched, useMargin, useNotifications, useArena, useAgents, useUpdate, usePlugins, useFloats, useVoice, seedMockWorkspace, dev: { pluginCommands, installPlugin, uninstallPlugin, refreshIndex, applyPack, allPacks, getTerminal, voiceText, dismissVoice } };
   }
   const env = useEnvironment.getState();
   env.setLoading(true);

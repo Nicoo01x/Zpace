@@ -31,6 +31,7 @@ import { AgentEditorDialog } from '@/features/agents/AgentEditorDialog';
 import { RoomDialog } from '@/features/agents/RoomDialog';
 import { SubagentEditorDialog } from '@/features/agents/SubagentEditorDialog';
 import { ConfirmCloseDialog } from '@/features/settings/ConfirmCloseDialog';
+import { VoiceOverlay } from '@/features/voice/VoiceOverlay';
 import { useSettings } from '@/stores/settings';
 import { useGlobalShortcuts } from './useGlobalShortcuts';
 import { applyAppearance, bootstrap } from './bootstrap';
@@ -114,6 +115,7 @@ export function App() {
         <DiffViewer />
         <GitPanel key={`gp-${language}`} />
         <Lightbox />
+        <VoiceOverlay key={`vo-${language}`} />
         <Toaster />
       </TooltipProvider>
     </MotionConfig>

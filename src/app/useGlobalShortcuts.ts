@@ -4,12 +4,17 @@ import { useLayouts, layoutsFor } from '@/stores/layouts';
 import { listen } from '@/native/bridge';
 import { useUI, collectLeaves } from '@/stores/ui';
 import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
+import { bindWorkspaceActions } from '@/features/sessions/actions-ref';
+import { startVoice } from '@/features/voice/agent';
 
 let keyRelay: Promise<() => void> | null = null;
 
 /** Application-wide keyboard shortcuts (see app/shortcuts.ts for the list). */
 export function useGlobalShortcuts() {
-  const { newSession, openProject, closeActivePane, openTerminalPane, newNote, currentProject } = useWorkspaceActions();
+  const actions = useWorkspaceActions();
+  const { newSession, openProject, closeActivePane, openTerminalPane, newNote, currentProject } = actions;
+  // The voice assistant's tools act through the same actions, outside React.
+  useEffect(() => bindWorkspaceActions(actions), [actions]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const ui = useUI.getState();
@@ -50,6 +55,9 @@ export function useGlobalShortcuts() {
       } else if (matchesShortcut(e, 'mod+`')) {
         e.preventDefault();
         ui.toggleTerminalPanel();
+      } else if (matchesShortcut(e, 'mod+shift+space')) {
+        e.preventDefault();
+        startVoice();
       } else if (matchesShortcut(e, 'mod+shift+t')) {
         e.preventDefault();
         openTerminalPane();

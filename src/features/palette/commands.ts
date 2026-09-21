@@ -41,6 +41,7 @@ import {
   Bot,
   Users,
   Puzzle,
+  Mic,
 } from 'lucide-react';
 import { allPacks, applyPack } from '@/features/appearance/packs';
 import { pluginCommands } from '@/features/plugins/runtime';
@@ -64,6 +65,7 @@ import { git } from '@/native/git';
 import { gitSummary } from '@/native/system';
 import { isTauri } from '@/lib/platform';
 import type { WorkspaceActions } from '@/features/sessions/useWorkspaceActions';
+import { startVoice } from '@/features/voice/agent';
 import { t, T } from '@/i18n';
 
 
@@ -118,6 +120,7 @@ export function buildCommands(a: WorkspaceActions): Command[] {
 
   return [
     // Create
+    { id: 'voice.talk', title: t('Talk to Zpace'), group: 'Create', icon: Mic, shortcut: 'mod+shift+space', keywords: ['voice', 'speak', 'microphone', 'assistant', 'voz'], when: () => isTauri, run: () => startVoice() },
     { id: 'create.terminal', title: t('New terminal'), group: 'Create', icon: Terminal, shortcut: 'mod+shift+t', run: () => { a.openTerminalPane(); } },
     { id: 'create.claude', title: t('Claude Code in folder…'), group: 'Create', icon: ClaudeLogo, keywords: ['tui', 'interactive'], run: () => void a.openClaudeTerminal() },
     { id: 'create.claude-here', title: t('Claude Code in current project'), group: 'Create', icon: ClaudeLogo, when: () => !!project(), run: () => void a.openClaudeTerminal({ projectId: project()!.id }) },

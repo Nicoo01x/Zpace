@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PanelLeft, GitCompareArrows, FolderTree } from 'lucide-react';
+import { PanelLeft, GitCompareArrows, FolderTree, Mic } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { isMac, isTauri } from '@/lib/platform';
 import { useUI } from '@/stores/ui';
@@ -13,6 +13,8 @@ import { UsageChip } from '@/features/agent/UsageChip';
 import { UsageBar } from '@/features/agent/UsageBar';
 import { MascotTitleBar } from '@/features/mascot/MascotView';
 import { Island } from '@/features/island/Island';
+import { startVoice } from '@/features/voice/agent';
+import { useVoice } from '@/features/voice/store';
 import { closeWindow, isMaximized, minimizeWindow, onMaximizedChange, toggleMaximizeWindow } from '@/native/window';
 import { t } from '@/i18n';
 
@@ -34,10 +36,23 @@ export function TitleBar() {
       <SidebarControls />
       <div data-tauri-drag-region className="flex-1" />
       <div data-island-avoid className="flex items-center">
+        <VoiceButton />
         <MascotTitleBar />
         <WindowControls />
       </div>
     </header>
+  );
+}
+
+/** The voice assistant: one tap and it listens. Lit while the orb is up. */
+function VoiceButton() {
+  const on = useVoice((s) => s.phase !== 'off');
+  return (
+    <span className="no-drag">
+      <IconButton label={t('Talk to Zpace')} shortcut="mod+shift+space" size="md" active={on} onClick={startVoice}>
+        <Mic />
+      </IconButton>
+    </span>
   );
 }
 

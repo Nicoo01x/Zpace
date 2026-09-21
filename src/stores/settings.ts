@@ -163,6 +163,15 @@ export interface SettingsState {
   /** The island as a floating window over the whole desktop (see features/island/desktop). */
   desktopIsland: DesktopIslandSettings;
 
+  /** The voice assistant's ears: which microphone, which language, which whisper model. */
+  voice: {
+    /** A cpal input device name; '' = the system default. */
+    device: string;
+    /** A whisper language code ('es', 'en', …) or 'auto'. */
+    language: string;
+    model: 'base' | 'small';
+  };
+
   set: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void;
   patch: (partial: Partial<SettingsState>) => void;
   setColor: (mode: 'light' | 'dark', token: ColorToken, value: string | undefined) => void;
@@ -237,6 +246,7 @@ const defaults: Omit<SettingsState, 'set' | 'patch' | 'setColor' | 'resetColors'
 
   notifications: { onComplete: true, onPermission: true, onError: true, sound: false, toastSound: false, volume: 0.8, soundTheme: 'glass', toastPosition: 'top-center', surface: 'island', speak: false },
   desktopIsland: DESKTOP_ISLAND_DEFAULTS,
+  voice: { device: '', language: 'auto', model: 'base' },
 };
 
 /** The persisted settings over the defaults, section by section, so new nested keys are never lost. */
@@ -249,6 +259,7 @@ function withDefaults(p: Partial<SettingsState>): Partial<SettingsState> {
     notifications: { ...defaults.notifications, ...(p.notifications ?? {}) },
     browser: { ...defaults.browser, ...(p.browser ?? {}) },
     mascot: { ...defaults.mascot, ...(p.mascot ?? {}) },
+    voice: { ...defaults.voice, ...(p.voice ?? {}) },
     desktopIsland: { ...defaults.desktopIsland, ...(p.desktopIsland ?? {}), modules: { ...defaults.desktopIsland.modules, ...(p.desktopIsland?.modules ?? {}) }, readouts: { ...defaults.desktopIsland.readouts, ...(p.desktopIsland?.readouts ?? {}) } },
   };
 }

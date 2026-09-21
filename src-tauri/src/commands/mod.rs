@@ -14,6 +14,8 @@ pub mod taskbar;
 pub mod updater;
 pub mod island;
 pub mod desktop;
+pub mod mcp;
+pub mod listen;
 
 use std::process::Command;
 

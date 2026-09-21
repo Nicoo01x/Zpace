@@ -22,6 +22,10 @@
     "dialog:default",
     "shell:allow-open",
     "opener:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "http://*" }, { "url": "https://*" }, { "url": "mailto:*" }, { "url": "ms-settings:*" }]
+    },
     "opener:allow-reveal-item-in-dir",
     {
       "identifier": "opener:allow-open-path",

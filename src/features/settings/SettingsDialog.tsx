@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { Dialog as RD } from 'radix-ui';
-import { Sun, Moon, Monitor, Plus, X, Check, RotateCcw, SlidersHorizontal, Palette, Bot, SquareTerminal, GitBranch, Bell, Keyboard, Wrench, Globe, Smile, RefreshCw, Hexagon, Workflow, Plug, Info, Puzzle, PanelTop } from 'lucide-react';
+import { Sun, Moon, Monitor, Plus, X, Check, RotateCcw, SlidersHorizontal, Palette, Bot, SquareTerminal, GitBranch, Bell, Keyboard, Wrench, Globe, Smile, RefreshCw, Hexagon, Workflow, Plug, Info, Puzzle, PanelTop, Mic } from 'lucide-react';
 import { MascotSection } from '@/features/mascot/MascotSettings';
+import { VoiceSection } from '@/features/voice/VoiceSettings';
 import { SEARCH_ENGINES } from '@/features/browser/engines';
 import { EngineLogo } from '@/features/browser/EngineLogo';
 import { ClaudeLogo, CodexLogo, GeminiLogo, OpenCodeLogo, AgentLogo } from '@/features/agent/BrandIcon';
@@ -44,6 +45,7 @@ import { DesktopIslandSection } from '@/features/island/DesktopIslandSection';
 import { playChime, playToast, previewTheme, SOUND_THEMES } from '@/features/notifications/sound';
 import { claudeArgs, claudeLaunchDefaults } from '@/features/sessions/useWorkspaceActions';
 import { t as tr, LANGUAGES, currentLocale } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 const NO_SHELLS: ShellInfo[] = [];
 const NO_FONTS: string[] = [];
@@ -59,6 +61,7 @@ const SECTIONS: Array<{ id: SettingsSection; label: string; icon: ReactNode }> =
   { id: 'mascot', label: 'Mascot', icon: <Smile /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell /> },
   { id: 'island', label: 'Desktop island', icon: <PanelTop /> },
+  { id: 'voice', label: 'Voice', icon: <Mic /> },
   { id: 'automations', label: 'Automations', icon: <Workflow /> },
   { id: 'mcp', label: 'MCP servers', icon: <Plug /> },
   { id: 'keyboard', label: 'Keyboard', icon: <Keyboard /> },
@@ -112,6 +115,7 @@ export function SettingsDialog() {
             {section === 'mascot' && <MascotSection />}
             {section === 'notifications' && <Notifications />}
             {section === 'island' && <DesktopIslandSection />}
+            {section === 'voice' && <VoiceSection Row={Row} Group={Group} />}
             {section === 'automations' && <AutomationsSection />}
             {section === 'mcp' && <McpSection />}
             {section === 'keyboard' && <KeyboardSection />}
@@ -572,7 +576,7 @@ function BinaryRow({ label, icon, check, binary }: { label: string; icon: ReactN
             <button
               type="button"
               onClick={() => {
-                void navigator.clipboard.writeText(path);
+                void copyText(path);
                 toast.neutral(tr('Path copied'), { origin: null, duration: 1200 });
               }}
               className="mt-1.5 block max-w-full truncate font-mono text-[11.5px] text-muted transition-colors hover:text-primary"
