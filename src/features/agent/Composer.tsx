@@ -39,6 +39,7 @@ import { terminalTail } from '@/features/terminal/registry';
 import { MODELS } from '@/stores/settings';
 import { formatCost, formatNumber } from '@/lib/format';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * Composer — a prompt line, not a chat box:
@@ -352,7 +353,7 @@ export const Composer = memo(function Composer({ sessionId, focused }: { session
       if (cmd === '/copy') {
         const last = [...(useSessions.getState().events[sessionId] ?? [])].reverse().find((e) => e.type === 'assistant_message');
         if (last && 'text' in last) {
-          void navigator.clipboard.writeText(String(last.text));
+          void copyText(String(last.text));
           toast.neutral(t('Copied'), { origin: null, duration: 1200 });
         }
         return true;

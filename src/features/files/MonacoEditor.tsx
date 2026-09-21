@@ -17,6 +17,7 @@ import { engineById } from '@/features/browser/engines';
 import { EngineLogo } from '@/features/browser/EngineLogo';
 import { t } from '@/i18n';
 import { copied } from '@/stores/clips';
+import { readClipboardText } from '@/lib/clipboard';
 
 export interface EditorSelection {
   code: string;
@@ -99,7 +100,7 @@ export default function MonacoEditor({
     const editor = editorRef.current;
     if (!editor) return;
     try {
-      const text = await navigator.clipboard.readText();
+      const text = await readClipboardText();
       const sel = editor.getSelection();
       if (sel) editor.executeEdits('conduit', [{ range: sel, text, forceMoveMarkers: true }]);
       editor.focus();

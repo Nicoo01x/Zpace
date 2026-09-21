@@ -17,6 +17,7 @@ import { RichNoteEditor } from './RichNoteEditor';
 import { BoardPane } from './BoardPane';
 import { DropdownMenuCheckboxItem } from '@/components/ui/DropdownMenu';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 type Mode = 'edit' | 'split' | 'preview';
 
@@ -157,7 +158,7 @@ export const NotePane = memo(function NotePane({ noteId, focused }: { noteId: st
   const exportMarkdown = async () => {
     const text = `# ${title || t('Untitled')}\n\n${body}`;
     if (!isTauri) {
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
       toast.neutral(t('Markdown copied'));
       return;
     }
@@ -273,7 +274,7 @@ export const NotePane = memo(function NotePane({ noteId, focused }: { noteId: st
             <DropdownMenuItem
               icon={<Copy />}
               onSelect={() => {
-                void navigator.clipboard.writeText(`# ${title}\n\n${body}`);
+                void copyText(`# ${title}\n\n${body}`);
                 toast.neutral(t('Markdown copied'));
               }}
             >

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { durableStorage } from '@/lib/durable-storage';
 import { uid } from '@/lib/id';
 import { t } from '@/i18n';
+import { readClipboardText } from '@/lib/clipboard';
 
 /**
  * Two small memories for the composer: the clipboard history (what was
@@ -94,13 +95,11 @@ export function watchClipboard() {
     } else {
       window.setTimeout(
         () =>
-          void navigator.clipboard
-            ?.readText()
-            .then((t) => {
-              useClips.getState().pushClip(t);
-              copied(t);
-            })
-            .catch(() => void 0),
+          void readClipboardText().then((t) => {
+            if (!t) return;
+            useClips.getState().pushClip(t);
+            copied(t);
+          }),
         50,
       );
     }
@@ -110,9 +109,6 @@ export function watchClipboard() {
     if (sel) useClips.getState().pushClip(sel);
   });
   window.addEventListener('focus', () => {
-    void navigator.clipboard
-      ?.readText()
-      .then((t) => useClips.getState().pushClip(t))
-      .catch(() => void 0);
+    void readClipboardText().then((t) => t && useClips.getState().pushClip(t));
   });
 }

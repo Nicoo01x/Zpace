@@ -14,6 +14,7 @@ import { languageFor } from './languages';
 import { simpleDiff } from './simpleDiff';
 import { isTauri } from '@/lib/platform';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 const MonacoDiff = lazy(() => import('./MonacoDiff'));
 
@@ -150,7 +151,7 @@ export function DiffPane({ path, sessionId, root }: { path: string; sessionId?: 
           variant="ghost"
           leading={<Copy />}
           onClick={() => {
-            void navigator.clipboard.writeText(change?.diff ?? stats.unified);
+            void copyText(change?.diff ?? stats.unified);
             toast.neutral(t('Diff copied'));
           }}
         >

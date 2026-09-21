@@ -165,6 +165,20 @@ pub async fn clipboard_write_png(png: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Text on the OS clipboard — independent of the webview's focus and permissions, which make `navigator.clipboard` fail silently.
+#[tauri::command]
+pub async fn clipboard_write_text(text: String) -> Result<(), String> {
+    let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    cb.set_text(text).map_err(|e| e.to_string())
+}
+
+/// The clipboard's text, empty when it holds none.
+#[tauri::command]
+pub async fn clipboard_read_text() -> Result<String, String> {
+    let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    Ok(cb.get_text().unwrap_or_default())
+}
+
 /// Write a base64 PNG to `path`.
 #[tauri::command]
 pub async fn write_png(path: String, png: String) -> Result<(), String> {

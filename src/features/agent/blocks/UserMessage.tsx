@@ -6,6 +6,7 @@ import { toast } from '@/features/notifications/toast-store';
 import { useUI } from '@/stores/ui';
 import { Row } from './Row';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * User turn:
@@ -49,7 +50,7 @@ export const UserMessage = memo(function UserMessage({ event, onResend }: { even
         <ContextMenuItem
           icon={<Copy />}
           onSelect={() => {
-            void navigator.clipboard.writeText(event.text);
+            void copyText(event.text);
             toast.neutral(t('Copied to clipboard'));
           }}
         >

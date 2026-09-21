@@ -7,6 +7,7 @@ import { toast } from '@/features/notifications/toast-store';
 import { Row } from './Row';
 import { cn } from '@/lib/cn';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 /** ● assistant prose (monospace, blue inline code). A hairline caret blinks while streaming. */
 export const AgentMessage = memo(function AgentMessage({ event }: { event: AssistantMessageEvent }) {
@@ -25,7 +26,7 @@ export const AgentMessage = memo(function AgentMessage({ event }: { event: Assis
         <ContextMenuItem
           icon={<Copy />}
           onSelect={() => {
-            void navigator.clipboard.writeText(event.text);
+            void copyText(event.text);
             toast.neutral(t('Copied to clipboard'));
           }}
         >

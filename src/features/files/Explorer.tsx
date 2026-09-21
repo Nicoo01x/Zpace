@@ -28,6 +28,7 @@ import { toast } from '@/features/notifications/toast-store';
 import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
 import type { GitFileStatus } from '@/types/workspace';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 interface Node {
   name: string;
@@ -459,7 +460,7 @@ function TreeNode({ node, depth, root, decorations, projectId }: { node: Node; d
               <ContextMenuItem
                 icon={<Copy />}
                 onSelect={() => {
-                  void navigator.clipboard.writeText(node.path);
+                  void copyText(node.path);
                   toast.neutral(t('Path copied'));
                 }}
               >
@@ -468,7 +469,7 @@ function TreeNode({ node, depth, root, decorations, projectId }: { node: Node; d
               <ContextMenuItem
                 icon={<Copy />}
                 onSelect={() => {
-                  void navigator.clipboard.writeText(node.rel);
+                  void copyText(node.rel);
                   toast.neutral(t('Path copied'));
                 }}
               >

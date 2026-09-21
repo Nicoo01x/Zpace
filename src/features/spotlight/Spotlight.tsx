@@ -31,6 +31,7 @@ import { buildCommands } from '@/features/palette/commands';
 import { projectFiles } from '@/features/files/file-index';
 import { creatableName, createMissing } from '@/features/files/create-missing';
 import { FilePlus, FolderPlus } from 'lucide-react';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * Spotlight — Ctrl+Space. One bar, anything: files of the current project,
@@ -181,7 +182,7 @@ function SpotlightBar({ close }: { close: () => void }) {
         icon: <Calculator className="size-[15px] text-muted" />,
         trailing: <span className="text-[11px] text-muted">{t('Enter copies')}</span>,
         run: () => {
-          void navigator.clipboard.writeText(sum);
+          void copyText(sum);
           toast.neutral(t('Copied'), { description: sum, origin: null, duration: 1200 });
         },
       });
@@ -501,7 +502,7 @@ function AnswerCard({ sessionId, q, engineLabel, onWeb, onKeep }: { sessionId: s
           <Globe className="size-3.5 text-muted" /> {t('Open in the browser ({engine})', { engine: engineLabel })}
         </button>
         {text ? (
-          <button type="button" onClick={() => { void navigator.clipboard.writeText(text.text); toast.neutral(t('Copied'), { origin: null, duration: 1200 }); }} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-raised px-2.5 text-[12px] font-medium text-primary shadow-sm transition-colors hover:bg-surface-hover">
+          <button type="button" onClick={() => { void copyText(text.text); toast.neutral(t('Copied'), { origin: null, duration: 1200 }); }} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-raised px-2.5 text-[12px] font-medium text-primary shadow-sm transition-colors hover:bg-surface-hover">
             <Copy className="size-3.5 text-muted" /> {t('Copy')}
           </button>
         ) : null}
@@ -570,7 +571,7 @@ function EngineAnswer({ q, engineId, onWeb, onAskClaude, onClose }: { q: string;
           <ExternalLink className="size-3.5 text-muted" /> {t('Open in the browser')}
         </button>
         {data.text.trim() ? (
-          <button type="button" onClick={() => { void navigator.clipboard.writeText(data.text); toast.neutral(t('Copied'), { origin: null, duration: 1200 }); }} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-raised px-2.5 text-[12px] font-medium text-primary shadow-sm transition-colors hover:bg-surface-hover">
+          <button type="button" onClick={() => { void copyText(data.text); toast.neutral(t('Copied'), { origin: null, duration: 1200 }); }} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-raised px-2.5 text-[12px] font-medium text-primary shadow-sm transition-colors hover:bg-surface-hover">
             <Copy className="size-3.5 text-muted" /> {t('Copy')}
           </button>
         ) : null}

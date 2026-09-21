@@ -9,6 +9,7 @@ import { formatDuration } from '@/lib/format';
 import { springs } from '@/lib/motion';
 import { toast } from '@/features/notifications/toast-store';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * Shell command row.
@@ -63,7 +64,7 @@ export const CommandExecution = memo(function CommandExecution({ event }: { even
             type="button"
             aria-label={t('Copy output')}
             onClick={() => {
-              void navigator.clipboard.writeText(event.output ?? '');
+              void copyText(event.output ?? '');
               toast.neutral(t('Output copied'));
             }}
             className="absolute right-1.5 top-1.5 inline-flex size-6 items-center justify-center rounded-md bg-surface text-muted opacity-0 shadow-[0_0_0_1px_var(--border)] transition-opacity duration-(--motion-fast) hover:text-primary group-hover/out:opacity-100 focus-visible:opacity-100"

@@ -5,6 +5,7 @@ import { Check, Copy } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { openUrl } from '@/native/system';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 const components: Components = {
   a: ({ href, children }) => (
@@ -44,7 +45,7 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
         type="button"
         aria-label={t('Copy code')}
         onClick={() => {
-          void navigator.clipboard.writeText(getText());
+          void copyText(getText());
           setCopied(true);
           setTimeout(() => setCopied(false), 1400);
         }}

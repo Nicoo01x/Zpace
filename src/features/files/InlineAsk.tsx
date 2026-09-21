@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { basename } from '@/lib/format';
 import { toast } from '@/features/notifications/toast-store';
 import { mentionPath, useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * "Ask Claude about this code": a small card that floats over the editor next
@@ -223,7 +224,7 @@ export function InlineAsk({ target, onClose }: { target: InlineAskTarget; onClos
           className="max-h-24 min-h-[22px] flex-1 text-[13px]"
         />
         {answer ? (
-          <IconButton label={t('Copy answer')} size="xs" onClick={() => { void navigator.clipboard.writeText(answer.text); toast.neutral(t('Copied'), { origin: null, duration: 1200 }); }}>
+          <IconButton label={t('Copy answer')} size="xs" onClick={() => { void copyText(answer.text); toast.neutral(t('Copied'), { origin: null, duration: 1200 }); }}>
             <Copy />
           </IconButton>
         ) : null}

@@ -13,6 +13,7 @@ import { useSessions } from '@/stores/sessions';
 import { isTauri } from '@/lib/platform';
 import { Row } from './Row';
 import { t } from '@/i18n';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * File change list:
@@ -89,7 +90,7 @@ export const FileChanges = memo(function FileChanges({ events, sessionId }: { ev
               <ContextMenuItem
                 icon={<Copy />}
                 onSelect={() => {
-                  void navigator.clipboard.writeText(e.path);
+                  void copyText(e.path);
                   toast.neutral(t('Path copied'));
                 }}
               >

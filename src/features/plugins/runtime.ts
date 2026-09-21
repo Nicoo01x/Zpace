@@ -23,6 +23,7 @@ import type { ThemePack } from '@/features/appearance/packs';
 import type { Command } from '@/features/palette/commands';
 import type { PaneContent } from '@/types/workspace';
 import type { PluginCommandSpec, PluginPermission } from './manifest';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * What a plugin's script gets. Declarative contributions (commands, themes,
@@ -458,7 +459,7 @@ export function apiFor(p: InstalledPlugin): ZpaceApi {
     clipboard: {
       write: async (text) => {
         need(p, 'clipboard');
-        await navigator.clipboard.writeText(text);
+        await copyText(text);
       },
     },
     openUrl: (url) => {

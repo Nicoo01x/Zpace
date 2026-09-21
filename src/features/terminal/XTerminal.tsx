@@ -22,6 +22,7 @@ import { registerTerminal } from './registry';
 import { useTerminalFind } from './find-store';
 import { matchesShortcut } from '@/lib/platform';
 import { SHORTCUTS } from '@/app/shortcuts';
+import { copyText, readClipboardText } from '@/lib/clipboard';
 
 const WEIGHT = { normal: 400, medium: 500, semibold: 600 } as const;
 
@@ -145,15 +146,12 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
     term.onSelectionChange(() => {
       if (!behaviour.current.copyOnSelect) return;
       const sel = term.getSelection();
-      if (sel) void navigator.clipboard?.writeText(sel).catch(() => void 0);
+      if (sel) void copyText(sel);
     });
     const onContext = (e: MouseEvent) => {
       if (!behaviour.current.rightClickPaste) return;
       e.preventDefault();
-      void navigator.clipboard
-        ?.readText()
-        .then((text) => text && term.paste(text))
-        .catch(() => void 0);
+      void readClipboardText().then((text) => text && term.paste(text));
     };
     host.addEventListener('contextmenu', onContext);
     cleanups.push(() => host.removeEventListener('contextmenu', onContext));
@@ -178,7 +176,7 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
     const copySelection = () => {
       const sel = term.getSelection();
       if (!sel) return false;
-      void navigator.clipboard?.writeText(sel).catch(() => void 0);
+      void copyText(sel);
       term.clearSelection();
       return true;
     };
@@ -187,7 +185,7 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
     // Ctrl+V, so that key goes through to the process instead.
     const pasteClipboard = () => {
       void (async () => {
-        const text = await navigator.clipboard?.readText().catch(() => '');
+        const text = await readClipboardText();
         if (text) {
           term.paste(text);
           return;
