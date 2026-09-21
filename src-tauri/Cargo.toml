@@ -32,26 +32,26 @@ serde_json = "1"
 portable-pty = "0.9"
 which = "8"
 trash = "5"
-base64 = "0.22"
+base64 = "0.23"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
 log = "0.4"
-ureq = { version = "2", features = ["json"] }
-notify = "7"
+ureq = { version = "3", features = ["json"] }
+notify = "8"
 regex = "1"
 # the voice assistant's MCP server (loopback HTTP, no async runtime)
 tiny_http = "0.12"
 # the voice assistant's microphone (the system default input, any format)
-cpal = "0.15"
+cpal = "0.18"
 
 # screenshots + the clipboard image: every platform
-png = "0.17"
+png = "0.18"
 arboard = { version = "3", default-features = false, features = ["image-data"] }
 
 [target.'cfg(windows)'.dependencies]
-webview2-com = "0.38"
-windows-core = "0.61"
-windows = { version = "0.61", features = [
+webview2-com = "0.39"
+windows-core = "0.62"
+windows = { version = "0.62", features = [
   "Media_SpeechRecognition", "Media_Control", "Media_Devices", "Devices_Enumeration", "Storage_Streams", "Globalization", "Foundation", "Foundation_Collections", "Win32_System_WinRT",
   # the desktop island: Action Center, app logos, the foreground window and its icon, Core Audio, the battery, the clipboard
   "UI_Notifications", "UI_Notifications_Management", "ApplicationModel",
@@ -59,7 +59,7 @@ windows = { version = "0.61", features = [
   "Win32_System_Threading", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Power", "Win32_System_SystemInformation", "Win32_System_DataExchange", "Win32_System_LibraryLoader",
   "Win32_Storage_FileSystem", "Win32_Media_Audio", "Win32_Media_Audio_Endpoints",
 ] }
-windows-sys = { version = "0.60", features = ["Win32_System_Threading", "Win32_Graphics_Gdi", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_LibraryLoader"] }
+windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Graphics_Gdi", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_LibraryLoader"] }
 
 [profile.release]
 codegen-units = 1
