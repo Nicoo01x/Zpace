@@ -102,6 +102,12 @@ export async function ptyKill(id: string): Promise<void> {
   await invoke('pty_kill', { id });
 }
 
+/** Claude Code running inside this PTY — as the program itself or typed into its shell — with the arguments it was started with. */
+export async function ptyAgent(id: string): Promise<{ args: string[]; startedAt: number } | null> {
+  if (!isTauri || !alive.has(id)) return null;
+  return invoke<{ args: string[]; startedAt: number } | null>('pty_agent', { id });
+}
+
 /** Attaches a view: everything printed so far is replayed first, then live data follows. Detaching keeps the history. */
 export function onPtyData(id: string, handler: (data: Uint8Array) => void) {
   dataHandlers.set(id, handler);

@@ -217,3 +217,60 @@ pub fn pty_kill(state: State<'_, PtyState>, id: String) -> Result<(), String> {
     }
     Ok(())
 }
+
+/// Claude Code found running inside a terminal: the arguments it was started with.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentProcess {
+    pub args: Vec<String>,
+    /// When the process started, ms since the epoch.
+    pub started_at: u64,
+}
+
+/// Is Claude Code running in this PTY (as the program itself or typed into its shell)? The process
+/// tree under the PTY's child is walked for `claude(.exe)` or a Node/Bun running Claude Code's
+/// `cli.js`; the arguments after the entry point are what it was launched with. Async so the
+/// process snapshot (tens of milliseconds) never runs on the UI thread.
+#[tauri::command]
+pub async fn pty_agent(state: State<'_, PtyState>, id: String) -> Result<Option<AgentProcess>, String> {
+    let root = {
+        let guard = state.sessions.lock().unwrap();
+        guard.get(&id).and_then(|h| h.child.process_id())
+    };
+    let Some(root) = root else { return Ok(None) };
+    tauri::async_runtime::spawn_blocking(move || find_claude(root)).await.map_err(|e| e.to_string())
+}
+
+fn find_claude(root: u32) -> Option<AgentProcess> {
+    use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_cmd(UpdateKind::Always));
+    let procs = sys.processes();
+    // Breadth first from the PTY's child, so the outermost Claude wins over anything it spawned.
+    let mut queue = std::collections::VecDeque::from([Pid::from_u32(root)]);
+    let mut seen = 0;
+    while let Some(pid) = queue.pop_front() {
+        seen += 1;
+        if seen > 256 {
+            break;
+        }
+        if let Some(p) = procs.get(&pid) {
+            let name = p.name().to_string_lossy().to_ascii_lowercase();
+            let cmd: Vec<String> = p.cmd().iter().map(|a| a.to_string_lossy().into_owned()).collect();
+            if name == "claude.exe" || name == "claude" {
+                return Some(AgentProcess { args: cmd.into_iter().skip(1).collect(), started_at: p.start_time() * 1000 });
+            }
+            if name.starts_with("node") || name.starts_with("bun") {
+                let entry = cmd.iter().position(|a| {
+                    let a = a.replace('\\', "/").to_ascii_lowercase();
+                    a.contains("@anthropic-ai/claude-code/") && (a.ends_with(".js") || a.ends_with(".mjs") || a.ends_with(".cjs"))
+                });
+                if let Some(i) = entry {
+                    return Some(AgentProcess { args: cmd.into_iter().skip(i + 1).collect(), started_at: p.start_time() * 1000 });
+                }
+            }
+        }
+        queue.extend(procs.values().filter(|c| c.parent() == Some(pid)).map(|c| c.pid()));
+    }
+    None
+}

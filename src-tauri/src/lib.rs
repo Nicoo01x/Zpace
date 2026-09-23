@@ -135,6 +135,7 @@ pub fn run() {
             commands::pty::pty_write,
             commands::pty::pty_resize,
             commands::pty::pty_kill,
+            commands::pty::pty_agent,
             commands::process::process_spawn,
             commands::process::process_write,
             commands::process::process_kill,

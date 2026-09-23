@@ -326,6 +326,12 @@ pub struct ChangedFile {
     pub status: String,
     pub additions: u32,
     pub deletions: u32,
+    /// Last write on disk, ms since the epoch (0 for a deleted file).
+    pub modified: u64,
+}
+
+fn modified_ms(path: &std::path::Path) -> u64 {
+    std::fs::metadata(path).and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| d.as_millis() as u64)
 }
 
 fn count_lines(path: &std::path::Path) -> u32 {
@@ -352,12 +358,15 @@ pub fn git_changes(path: String, base: Option<String>) -> Result<Vec<ChangedFile
         kinds.insert(f.trim().to_string(), k.chars().next().unwrap_or('M').to_string());
     }
     let numstat = git(&path, &["diff", "--numstat", "--no-renames", &at, "--"])?;
+    // Diff paths are relative to the repository's top, not to `path` when it is a sub-folder.
+    let top = git(&path, &["rev-parse", "--show-toplevel"]).map(|t| t.trim().to_string()).unwrap_or_else(|_| path.clone());
     for line in numstat.lines() {
         let mut parts = line.splitn(3, '\t');
         let (Some(a), Some(d), Some(f)) = (parts.next(), parts.next(), parts.next()) else { continue };
         let file = f.trim().to_string();
         let status = kinds.get(&file).cloned().unwrap_or_else(|| "M".to_string());
-        out.push(ChangedFile { file, status, additions: a.parse().unwrap_or(0), deletions: d.parse().unwrap_or(0) });
+        let modified = modified_ms(&std::path::Path::new(&top).join(&file));
+        out.push(ChangedFile { file, status, additions: a.parse().unwrap_or(0), deletions: d.parse().unwrap_or(0), modified });
     }
     let untracked = git(&path, &["ls-files", "--others", "--exclude-standard"])?;
     for line in untracked.lines() {
@@ -365,8 +374,8 @@ pub fn git_changes(path: String, base: Option<String>) -> Result<Vec<ChangedFile
         if f.is_empty() {
             continue;
         }
-        let additions = count_lines(&std::path::Path::new(&path).join(f));
-        out.push(ChangedFile { file: f.to_string(), status: "A".to_string(), additions, deletions: 0 });
+        let abs = std::path::Path::new(&path).join(f);
+        out.push(ChangedFile { file: f.to_string(), status: "A".to_string(), additions: count_lines(&abs), deletions: 0, modified: modified_ms(&abs) });
     }
     out.sort_by(|a, b| a.file.to_lowercase().cmp(&b.file.to_lowercase()));
     Ok(out)

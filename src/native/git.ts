@@ -19,6 +19,8 @@ export interface ChangedFile {
   status: 'M' | 'A' | 'D';
   additions: number;
   deletions: number;
+  /** Last write on disk, ms since the epoch (0 for a deleted file). */
+  modified: number;
 }
 
 export const git = {

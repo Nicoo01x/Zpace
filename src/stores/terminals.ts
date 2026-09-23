@@ -3,6 +3,7 @@ import { ptyKill } from '@/native/pty';
 import { persist } from 'zustand/middleware';
 import type { TerminalTab } from '@/types/workspace';
 import { uid } from '@/lib/id';
+import { forgetTerminal } from '@/features/terminal/claude-live';
 
 export interface TerminalsState {
   tabs: TerminalTab[];
@@ -22,7 +23,7 @@ export interface TerminalsState {
  * panes, and are restored on launch (a new PTY is spawned for each tab).
  */
 /** Hydration from SQLite replaces what came from localStorage, but keeps what this launch created before the database answered. */
-const BOOT_AT = Date.now();
+export const BOOT_AT = Date.now();
 export const useTerminals = create<TerminalsState>()(
   persist(
     (set, get) => ({
@@ -45,6 +46,7 @@ export const useTerminals = create<TerminalsState>()(
       closeTab: (id) => {
         const pty = get().tabs.find((t) => t.id === id)?.ptyId;
         if (pty) void ptyKill(pty);
+        forgetTerminal(id);
         set((s) => {
           const tabs = s.tabs.filter((t) => t.id !== id);
           const activeTabId = s.activeTabId === id ? (tabs[tabs.length - 1]?.id ?? null) : s.activeTabId;
@@ -61,7 +63,12 @@ export const useTerminals = create<TerminalsState>()(
       hydrate: (tabs) =>
         set((s) => {
           const live = s.tabs.filter((t) => !tabs.some((q) => q.id === t.id) && t.createdAt >= BOOT_AT);
-          const all = [...tabs, ...live];
+          // A tab that already spawned before the database answered keeps its process.
+          const saved = tabs.map((t) => {
+            const ptyId = s.tabs.find((q) => q.id === t.id)?.ptyId;
+            return ptyId ? { ...t, ptyId } : t;
+          });
+          const all = [...saved, ...live];
           return { tabs: all, activeTabId: s.activeTabId ?? all[all.length - 1]?.id ?? null };
         }),
     }),

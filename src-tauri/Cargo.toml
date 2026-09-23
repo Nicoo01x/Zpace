@@ -47,6 +47,7 @@ cpal = "0.15"
 # screenshots + the clipboard image: every platform
 png = "0.17"
 arboard = { version = "3", default-features = false, features = ["image-data"] }
+sysinfo = { version = "0.36.1", default-features = false, features = ["system"] }
 
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.38"

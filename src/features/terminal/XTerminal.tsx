@@ -10,9 +10,10 @@ import '@xterm/xterm/css/xterm.css';
 import { useSettings } from '@/stores/settings';
 import { useEnvironment, whenEnvironmentReady } from '@/stores/environment';
 import { terminalFontStack } from '@/lib/fonts';
-import { useTerminals } from '@/stores/terminals';
+import { useTerminals, BOOT_AT } from '@/stores/terminals';
 import { onPtyData, onPtyExit, ptyAlive, ptyAvailable, ptyKill, ptyResize, ptySpawn, ptyWrite } from '@/native/pty';
 import { forgetActivity, noteInput, noteOutput } from './activity';
+import { claudeLiveReady, noteTerminalOutput, resumeCommand, resumeProgram, useClaudeLive } from './claude-live';
 import { alignClaudeTheme } from '@/features/agent/claude-theme';
 import { openUrl } from '@/native/system';
 import type { TerminalTab } from '@/types/workspace';
@@ -23,6 +24,9 @@ import { useTerminalFind } from './find-store';
 import { matchesShortcut } from '@/lib/platform';
 import { SHORTCUTS } from '@/app/shortcuts';
 import { copyText, readClipboardText } from '@/lib/clipboard';
+
+/** Tabs this run has already spawned once: only their first spawn can be a restore. */
+const restored = new Set<string>();
 
 const WEIGHT = { normal: 400, medium: 500, semibold: 600 } as const;
 
@@ -236,6 +240,8 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
 
     let disposed = false;
     let ptyId: string | undefined;
+    let restoreProgram: string[] | null = null;
+    let restoreLine: string[] | null = null;
     const decoder = new TextDecoder();
 
     const doFit = () => {
@@ -304,6 +310,14 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
           if (disposed) throw new Error('disposed');
           doFit();
           if (existing) return existing;
+          // The first spawn of a tab saved by an earlier run is a restore: if Claude Code was open in it when the
+          // app went away (closed, crashed, the machine switched off), it comes back with its flags and `-c`.
+          if (tab.createdAt < BOOT_AT && !restored.has(tab.id)) {
+            restored.add(tab.id);
+            await claudeLiveReady();
+            if (tab.program?.agent === 'claude') restoreProgram = resumeProgram(tab.program);
+            else if (!tab.program) restoreLine = useClaudeLive.getState().byTab[tab.id]?.args ?? null;
+          }
           // Claude Code's own theme follows the terminal's side, or your messages come out as black bars on a light one.
           if (tab.program?.agent === 'claude' && tab.program.path !== 'wsl.exe') await alignClaudeTheme(terminalIsDark()).catch(() => void 0);
           if (disposed) throw new Error('disposed');
@@ -311,7 +325,7 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
           // A tab can run a program directly (Claude Code's TUI) instead of a shell.
           return ptySpawn({
             shell: tab.program?.path ?? shell?.path ?? (navigator.platform.startsWith('Win') ? 'powershell.exe' : '/bin/sh'),
-            args: tab.program?.args ?? shell?.args ?? [],
+            args: restoreProgram ?? tab.program?.args ?? shell?.args ?? [],
             cwd: tab.cwd || undefined,
             cols: term.cols,
             rows: term.rows,
@@ -329,6 +343,12 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
           // A startup command for shells (not for Claude Code and friends): typed once the prompt is likely up.
           const startup = useSettings.getState().terminal.startupCommand.trim();
           if (startup && !tab.program && !existing) window.setTimeout(() => void ptyWrite(id, startup + '\r'), 600);
+          // A shell that had Claude running in it gets it back once its prompt is up.
+          if (restoreLine) {
+            const line = resumeCommand(restoreLine, useEnvironment.getState().report?.shells.find((s) => s.id === tab.shellId)?.kind);
+            useClaudeLive.getState().set(tab.id, { args: restoreLine, since: Date.now() });
+            window.setTimeout(() => void ptyWrite(id, line + '\r'), startup ? 1400 : 700);
+          }
           // A full-screen program repaints on a size change: nudge the process after the replay so its screen is whole.
           if (existing) window.setTimeout(() => void ptyResize(id, term.cols, term.rows + 1).then(() => ptyResize(id, term.cols, term.rows)), 80);
           const startedAt = Date.now();
@@ -338,6 +358,7 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
               const text = decoder.decode(bytes, { stream: true });
               term.write(text);
               noteOutput(tab.id);
+              noteTerminalOutput(tab.id, id);
               if (tab.program) tail = (tail + text).slice(-600);
             }),
           );

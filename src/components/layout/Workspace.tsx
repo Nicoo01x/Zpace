@@ -23,7 +23,7 @@ import { RoomPane } from '@/features/agents/RoomPane';
 import { PluginPane } from '@/features/plugins/PluginPane';
 import { pluginPaneTitle } from '@/features/plugins/runtime';
 import { InstalledPluginIcon } from '@/features/plugins/PluginIcon';
-import { ChangesButton } from '@/features/review/ChangesButton';
+import { ChangesButton, TerminalChangesButton } from '@/features/review/ChangesButton';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { HomeScreen } from '@/features/projects/HomeScreen';
 import { NotePane } from '@/features/notes/NotePane';
@@ -338,6 +338,7 @@ function PaneHeader({ leaf, active }: { leaf: PaneLeaf; active: boolean }) {
       </AnimatePresence>
       <div className="flex items-center gap-0.5 no-drag">
         {session ? <ChangesButton sessionId={session.id} /> : null}
+        {terminalId ? <TerminalChangesButton terminalId={terminalId} /> : null}
         <IconButton label={zoomed ? t('Restore layout') : t('Maximize pane')} shortcut="mod+shift+enter" size="md" onClick={() => toggleZoom(leaf.id)} active={zoomed}>
           {zoomed ? <Minimize2 /> : <Maximize2 />}
         </IconButton>

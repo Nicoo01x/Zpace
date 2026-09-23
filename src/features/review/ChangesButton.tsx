@@ -4,6 +4,8 @@ import { cn } from '@/lib/cn';
 import { useReview, allFor, pendingFor } from '@/stores/review';
 import { IconButton } from '@/components/ui/IconButton';
 import { openReview } from './open-review';
+import { useClaudeLive } from '@/features/terminal/claude-live';
+import { useTerminalChanges } from '@/features/terminal/claude-changes';
 import { t } from '@/i18n';
 
 /** In a session pane's header: everything the agent changed in it, one click away (badge = files still to review, else the total). */
@@ -16,6 +18,22 @@ export function ChangesButton({ sessionId }: { sessionId: string }) {
         <FileDiff />
       </IconButton>
       <span className={cn('pointer-events-none absolute -right-0.5 -top-0.5 min-w-[14px] rounded-full px-1 text-center text-[9.5px] font-semibold leading-[14px] tabular', pending ? 'bg-accent text-inverse' : 'bg-surface-active text-secondary')}>{pending || total}</span>
+    </span>
+  );
+}
+
+/** In a terminal pane's header while Claude Code runs in it: shows or hides the changes panel (badge = files changed this session). */
+export function TerminalChangesButton({ terminalId }: { terminalId: string }) {
+  const live = useClaudeLive((s) => !!s.byTab[terminalId]);
+  const open = useClaudeLive((s) => s.panelOpen);
+  const count = useTerminalChanges((s) => s.byTab[terminalId]?.session.length ?? 0);
+  if (!live) return null;
+  return (
+    <span className="relative inline-flex">
+      <IconButton label={open ? t('Hide changes') : t('Show changes')} size="md" onClick={() => useClaudeLive.getState().togglePanel()} active={open}>
+        <FileDiff />
+      </IconButton>
+      {count ? <span className="pointer-events-none absolute -right-0.5 -top-0.5 min-w-[14px] rounded-full bg-accent px-1 text-center text-[9.5px] font-semibold leading-[14px] text-inverse tabular">{count}</span> : null}
     </span>
   );
 }
