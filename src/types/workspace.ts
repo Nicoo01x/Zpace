@@ -223,6 +223,8 @@ export type PaneContent =
   | { kind: 'arena'; arenaId: string }
   | { kind: 'room'; roomId: string }
   | { kind: 'plugin'; pluginId: string; paneId: string }
+  /** A project's front door: "what do you want to do today?" */
+  | { kind: 'start'; projectId: string }
   | { kind: 'empty' };
 
 export interface GitBranch {

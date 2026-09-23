@@ -13,7 +13,7 @@ import { terminalFontStack } from '@/lib/fonts';
 import { useTerminals, BOOT_AT } from '@/stores/terminals';
 import { onPtyData, onPtyExit, ptyAlive, ptyAvailable, ptyKill, ptyResize, ptySpawn, ptyWrite } from '@/native/pty';
 import { forgetActivity, noteInput, noteOutput } from './activity';
-import { claudeLiveReady, noteTerminalOutput, resumeCommand, resumeProgram, useClaudeLive } from './claude-live';
+import { claudeLiveReady, resumeCommand, resumeProgram, useClaudeLive } from './claude-live';
 import { alignClaudeTheme } from '@/features/agent/claude-theme';
 import { openUrl } from '@/native/system';
 import type { TerminalTab } from '@/types/workspace';
@@ -358,7 +358,6 @@ export const XTerminal = memo(function XTerminal({ tab, focused, onExit }: { tab
               const text = decoder.decode(bytes, { stream: true });
               term.write(text);
               noteOutput(tab.id);
-              noteTerminalOutput(tab.id, id);
               if (tab.program) tail = (tail + text).slice(-600);
             }),
           );

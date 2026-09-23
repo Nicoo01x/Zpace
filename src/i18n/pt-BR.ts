@@ -1686,4 +1686,11 @@ export const ptBR: Record<string, string> = {
   "Claude has not changed files yet.": "O Claude ainda não alterou arquivos.",
   "No uncommitted changes.": "Nenhuma alteração não commitada.",
   "Deleted": "Excluído",
+  "Project not found": "Projeto não encontrado",
+  "What do you want to do today?": "O que você quer fazer hoje?",
+  "Describe the task. Claude Code starts in a terminal with it.": "Descreva a tarefa. O Claude Code começa com ela em um terminal.",
+  "Claude Code in a terminal": "Claude Code em um terminal",
+  "Open in this project": "Abertos neste projeto",
+  "Waiting for you": "Esperando você",
+  "Resize": "Redimensionar",
 };

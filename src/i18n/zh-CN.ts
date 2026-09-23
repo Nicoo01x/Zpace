@@ -1686,4 +1686,11 @@ export const zhCN: Record<string, string> = {
   "Claude has not changed files yet.": "Claude 还没有修改任何文件。",
   "No uncommitted changes.": "没有未提交的更改。",
   "Deleted": "已删除",
+  "Project not found": "找不到项目",
+  "What do you want to do today?": "今天想做什么？",
+  "Describe the task. Claude Code starts in a terminal with it.": "描述任务，Claude Code 会在终端里从它开始。",
+  "Claude Code in a terminal": "终端中的 Claude Code",
+  "Open in this project": "在此项目中打开",
+  "Waiting for you": "等你回复",
+  "Resize": "调整大小",
 };

@@ -25,6 +25,7 @@ import { bootPlugins, install as installPlugin, uninstall as uninstallPlugin, re
 import { getTerminal } from '@/features/terminal/registry';
 import { pluginCommands } from '@/features/plugins/runtime';
 import { watchDesktopIsland } from '@/features/island/desktop/bridge';
+import { startClaudeWatch } from '@/features/terminal/claude-watch';
 import { useVoice } from '@/features/voice/store';
 import { voiceText, dismissVoice } from '@/features/voice/agent';
 
@@ -55,6 +56,7 @@ export async function bootstrap() {
   startAutomations();
   // The desktop island: a second window over the screen, when the setting is on.
   watchDesktopIsland();
+  startClaudeWatch();
   // Plugins: activate the enabled ones once their store has hydrated, then a quiet look at the registry.
   window.setTimeout(() => void bootPlugins(), 1500);
   // A quiet look at the update channel a few seconds in (only says something when there is news).

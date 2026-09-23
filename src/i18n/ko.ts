@@ -1686,4 +1686,11 @@ export const ko: Record<string, string> = {
   "Claude has not changed files yet.": "Claude가 아직 파일을 변경하지 않았습니다.",
   "No uncommitted changes.": "커밋되지 않은 변경 사항이 없습니다.",
   "Deleted": "삭제됨",
+  "Project not found": "프로젝트를 찾을 수 없습니다",
+  "What do you want to do today?": "오늘 무엇을 하고 싶나요?",
+  "Describe the task. Claude Code starts in a terminal with it.": "작업을 설명하세요. Claude Code가 터미널에서 그걸로 시작합니다.",
+  "Claude Code in a terminal": "터미널의 Claude Code",
+  "Open in this project": "이 프로젝트에서 열려 있음",
+  "Waiting for you": "입력 대기 중",
+  "Resize": "크기 조절",
 };

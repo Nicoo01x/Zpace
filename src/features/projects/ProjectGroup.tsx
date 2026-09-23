@@ -9,7 +9,7 @@ import { useProjects } from '@/stores/projects';
 import { useSessions, sessionsForProject } from '@/stores/sessions';
 import { useTerminals } from '@/stores/terminals';
 import { useNotes, sortedNotes, noteTitle } from '@/stores/notes';
-import { useUI } from '@/stores/ui';
+import { useUI, collectLeaves } from '@/stores/ui';
 import { LivingItem, LivingList, LivingReveal, Swap } from '@/components/ui/Living';
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/ContextMenu';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/DropdownMenu';
@@ -152,10 +152,17 @@ export const ProjectGroup = memo(function ProjectGroup({ project }: { project: P
     </>
   );
 
-  /** Click selects the project as context and toggles its sessions; it never creates anything. */
+  /**
+   * Click selects the project as context and toggles its sessions; it never creates anything. Opening it (or
+   * clicking it while the pane shows nothing) also brings up its front door, "what do you want to do today?".
+   * Collapsing it leaves the pane alone, so the terminal you were watching stays.
+   */
   const activate = () => {
     setActiveProject(project.id);
     useProjects.getState().touch(project.id);
+    const ui = useUI.getState();
+    const shown = collectLeaves(ui.layout).find((l) => l.id === ui.activePaneId)?.content;
+    if (!project.expanded || !shown || shown.kind === 'empty' || shown.kind === 'start') ui.setPaneContent(ui.activePaneId, { kind: 'start', projectId: project.id });
     toggleExpanded(project.id);
   };
 

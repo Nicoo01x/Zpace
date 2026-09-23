@@ -54,6 +54,30 @@ export function claudeFinishedToast(opts: { sessionId: string; title: string; pr
   });
 }
 
+/** "Claude finished" for Claude Code running in a terminal: the conversation's title, the files it changed there (from git), a button back to the terminal. */
+export function claudeTerminalDoneToast(opts: { key: string; title: string; project?: string; files: Array<{ path: string; add: number; del: number }>; open: () => void }) {
+  const adds = opts.files.reduce((n, f) => n + f.add, 0);
+  const dels = opts.files.reduce((n, f) => n + f.del, 0);
+  const summary = opts.files.length ? t('{n} files · +{a} −{d}', { n: opts.files.length, a: adds, d: dels }) : t('No files changed');
+  const where = `${opts.project ? `${opts.project} · ` : ''}${opts.title}`;
+  toast.success(t('Claude finished'), {
+    key: opts.key,
+    icon: <ClaudeLogo size={16} />,
+    mark: 'claude',
+    summary: `${where} · ${summary}`,
+    description: (
+      <div>
+        <div style={{ opacity: 0.8 }}>
+          {where} · {summary}
+        </div>
+        <FilesTouched files={opts.files} />
+      </div>
+    ),
+    action: { label: t('Open'), onClick: opts.open },
+    duration: opts.files.length ? 9000 : 5000,
+  });
+}
+
 /** "Claude needs you": the mark, what it wants, a button to answer in the chat. */
 export function claudePermissionToast(opts: { sessionId: string; title: string; project?: string; detail?: string; open: () => void }) {
   toast.warning(t('Permission required'), {

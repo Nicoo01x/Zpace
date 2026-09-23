@@ -1686,4 +1686,11 @@ export const ja: Record<string, string> = {
   "Claude has not changed files yet.": "Claude はまだファイルを変更していません。",
   "No uncommitted changes.": "未コミットの変更はありません。",
   "Deleted": "削除済み",
+  "Project not found": "プロジェクトが見つかりません",
+  "What do you want to do today?": "今日は何をしますか？",
+  "Describe the task. Claude Code starts in a terminal with it.": "タスクを書いてください。Claude Code がターミナルでそれを始めます。",
+  "Claude Code in a terminal": "ターミナルの Claude Code",
+  "Open in this project": "このプロジェクトで開いているもの",
+  "Waiting for you": "入力待ち",
+  "Resize": "サイズを変更",
 };

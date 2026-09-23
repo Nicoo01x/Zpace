@@ -36,7 +36,8 @@ export const TerminalView = memo(function TerminalView({ terminalId, focused, on
       <AnimatePresence initial={false}>
         {showChanges ? (
           <motion.div key="changes" className="h-full" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={springs.snappy}>
-            <ClaudeChanges tabId={tab.id} cwd={tab.cwd} since={since} />
+            {/* Keyed by tab: the pane can switch terminals, and the last one's rows must not linger on their way out. */}
+            <ClaudeChanges key={tab.id} tabId={tab.id} cwd={tab.cwd} since={since} />
           </motion.div>
         ) : null}
       </AnimatePresence>

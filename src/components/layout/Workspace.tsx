@@ -24,6 +24,8 @@ import { PluginPane } from '@/features/plugins/PluginPane';
 import { pluginPaneTitle } from '@/features/plugins/runtime';
 import { InstalledPluginIcon } from '@/features/plugins/PluginIcon';
 import { ChangesButton, TerminalChangesButton } from '@/features/review/ChangesButton';
+import { terminalName, useClaudeLive } from '@/features/terminal/claude-live';
+import { ProjectStart } from '@/features/projects/ProjectStart';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { HomeScreen } from '@/features/projects/HomeScreen';
 import { NotePane } from '@/features/notes/NotePane';
@@ -142,6 +144,9 @@ const Pane = memo(function Pane({ leaf }: { leaf: PaneLeaf }) {
     case 'plugin':
       body = <PluginPane pluginId={leaf.content.pluginId} paneId={leaf.content.paneId} />;
       break;
+    case 'start':
+      body = <ProjectStart projectId={leaf.content.projectId} />;
+      break;
     default:
       body = <HomeScreen />;
   }
@@ -227,6 +232,7 @@ function PaneHeader({ leaf, active }: { leaf: PaneLeaf; active: boolean }) {
   const updateSession = useSessions((s) => s.updateSession);
   const duplicate = useSessions((s) => s.duplicateSession);
   const terminal = useTerminals((s) => (terminalId ? s.tabs.find((t) => t.id === terminalId) : undefined));
+  const claudeTitle = useClaudeLive((s) => (terminalId ? s.titles[terminalId] : undefined));
   const noteId = content.kind === 'note' ? content.noteId : null;
   const note = useNotes((s) => (noteId ? s.notes[noteId] : undefined));
   const projectId = session?.projectId ?? terminal?.projectId ?? note?.projectId;
@@ -250,7 +256,7 @@ function PaneHeader({ leaf, active }: { leaf: PaneLeaf; active: boolean }) {
     content.kind === 'session'
       ? (session ? sessionTitle(session.title) : 'Session')
       : content.kind === 'terminal'
-        ? `${terminal?.title ?? 'Terminal'}${project ? ` · ${project.name}` : ''}`
+        ? `${terminal ? terminalName(terminal, claudeTitle) : 'Terminal'}${project ? ` · ${project.name}` : ''}`
         : content.kind === 'note'
           ? (note?.title ?? 'Note')
           : content.kind === 'file'
@@ -269,6 +275,8 @@ function PaneHeader({ leaf, active }: { leaf: PaneLeaf; active: boolean }) {
                         ? `${t('Room')} · ${useAgents.getState().rooms[content.roomId]?.name ?? ''}`
                         : content.kind === 'plugin'
                           ? pluginPaneTitle(content.pluginId, content.paneId)
+                          : content.kind === 'start'
+                            ? (useProjects.getState().projects.find((p) => p.id === content.projectId)?.name ?? 'Zpace')
                           : (project?.name ?? 'Zpace');
   const busy = session?.status === 'running' || session?.status === 'waiting';
   const terminalBusySince = useTerminalActivity((s) => (terminalId ? s.busy[terminalId] : undefined));

@@ -1686,4 +1686,11 @@ export const it: Record<string, string> = {
   "Claude has not changed files yet.": "Claude non ha ancora modificato file.",
   "No uncommitted changes.": "Nessuna modifica non committata.",
   "Deleted": "Eliminato",
+  "Project not found": "Progetto non trovato",
+  "What do you want to do today?": "Cosa vuoi fare oggi?",
+  "Describe the task. Claude Code starts in a terminal with it.": "Descrivi il compito. Claude Code parte con questo in un terminale.",
+  "Claude Code in a terminal": "Claude Code in un terminale",
+  "Open in this project": "Aperti in questo progetto",
+  "Waiting for you": "Ti aspetta",
+  "Resize": "Ridimensiona",
 };

@@ -41,6 +41,14 @@ const HISTORY_BYTES = 1_500_000;
 const alive = new Set<string>();
 const pendingExit = new Map<string, number | null>();
 let listening: Promise<void> | null = null;
+const anyData = new Set<(id: string, data: Uint8Array) => void>();
+
+/** Every PTY's output, whether or not a view is attached to it (the Claude watcher reads titles from it). */
+export function onAnyPtyData(handler: (id: string, data: Uint8Array) => void) {
+  anyData.add(handler);
+  void ensureListeners();
+  return () => void anyData.delete(handler);
+}
 
 function remember(id: string, bytes: Uint8Array) {
   const h = history.get(id) ?? { chunks: [], bytes: 0 };
@@ -57,6 +65,7 @@ function ensureListeners() {
       const bytes = base64ToBytes(p.data);
       remember(p.id, bytes);
       dataHandlers.get(p.id)?.(bytes);
+      for (const h of anyData) h(p.id, bytes);
     });
     await listen<PtyExitPayload>('pty://exit', (p) => {
       alive.delete(p.id);

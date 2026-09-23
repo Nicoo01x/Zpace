@@ -1686,4 +1686,11 @@ export const ru: Record<string, string> = {
   "Claude has not changed files yet.": "Claude ещё не изменял файлы.",
   "No uncommitted changes.": "Нет незакоммиченных изменений.",
   "Deleted": "Удалён",
+  "Project not found": "Проект не найден",
+  "What do you want to do today?": "Что будем делать сегодня?",
+  "Describe the task. Claude Code starts in a terminal with it.": "Опишите задачу — Claude Code начнёт с неё в терминале.",
+  "Claude Code in a terminal": "Claude Code в терминале",
+  "Open in this project": "Открыто в этом проекте",
+  "Waiting for you": "Ждёт вас",
+  "Resize": "Изменить размер",
 };

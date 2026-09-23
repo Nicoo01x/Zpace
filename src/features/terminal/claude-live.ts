@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { durableStorage } from '@/lib/durable-storage';
 import { ptyAgent } from '@/native/pty';
 import type { ShellKind, TerminalTab } from '@/types/workspace';
+import { t } from '@/i18n';
 
 /**
  * Which terminals have Claude Code running in them right now, and with what
@@ -24,17 +25,27 @@ export interface LiveClaude {
 
 interface ClaudeLiveState {
   byTab: Record<string, LiveClaude>;
-  /** The changes panel beside a terminal running Claude. */
+  /** The title Claude Code gives its terminal (what the conversation is about), per tab. */
+  titles: Record<string, string>;
+  /** The changes panel beside a terminal running Claude, and its width. */
   panelOpen: boolean;
+  panelWidth: number;
   set: (tabId: string, live: LiveClaude | null) => void;
+  setTitle: (tabId: string, title: string | null) => void;
   togglePanel: () => void;
+  setPanelWidth: (width: number) => void;
 }
+
+export const PANEL_MIN = 220;
+export const PANEL_MAX = 720;
 
 export const useClaudeLive = create<ClaudeLiveState>()(
   persist(
     (set) => ({
       byTab: {},
+      titles: {},
       panelOpen: true,
+      panelWidth: 300,
       set: (tabId, live) =>
         set((s) => {
           if (!live) {
@@ -45,9 +56,25 @@ export const useClaudeLive = create<ClaudeLiveState>()(
           }
           return { byTab: { ...s.byTab, [tabId]: live } };
         }),
+      setTitle: (tabId, title) =>
+        set((s) => {
+          if ((s.titles[tabId] ?? null) === title) return s;
+          const titles = { ...s.titles };
+          if (title) titles[tabId] = title;
+          else delete titles[tabId];
+          return { titles };
+        }),
       togglePanel: () => set((s) => ({ panelOpen: !s.panelOpen })),
+      setPanelWidth: (width) => set({ panelWidth: Math.round(Math.min(PANEL_MAX, Math.max(PANEL_MIN, width))) }),
     }),
-    { name: 'zpace.claude-live', version: 1, storage: durableStorage(), partialize: (s) => ({ byTab: s.byTab, panelOpen: s.panelOpen }) },
+    {
+      name: 'zpace.claude-live',
+      version: 2,
+      storage: durableStorage(),
+      partialize: (s) => ({ byTab: s.byTab, titles: s.titles, panelOpen: s.panelOpen, panelWidth: s.panelWidth }),
+      // v1 had no titles and a fixed panel width.
+      migrate: (state) => ({ titles: {}, panelWidth: 300, ...(state as object) }) as ClaudeLiveState,
+    },
   ),
 );
 
@@ -162,6 +189,24 @@ export function forgetTerminal(tabId: string) {
   if (t?.trailing != null) window.clearTimeout(t.trailing);
   timers.delete(tabId);
   useClaudeLive.getState().set(tabId, null);
+  useClaudeLive.getState().setTitle(tabId, null);
+}
+
+/** What to call a terminal: a name the user gave it wins; a stock one ("Claude Code", the shell's id) gives way to Claude's title for the conversation. */
+export function terminalName(tab: Pick<TerminalTab, 'title' | 'shellId'>, claudeTitle: string | undefined): string {
+  const stock = tab.title === tab.shellId || tab.title === 'Claude Code' || tab.title === t('Claude Code');
+  return stock && claudeTitle ? claudeTitle : tab.title;
+}
+
+/**
+ * The title Claude Code sets on its terminal (OSC 0/2): a few words on what
+ * the conversation is about, behind a spinner glyph while it works. The glyph
+ * goes; the bare product name says nothing and is dropped.
+ */
+export function claudeTitle(raw: string): string | null {
+  const title = raw.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+  if (!title || /^claude( code)?$/i.test(title)) return null;
+  return title.slice(0, 80);
 }
 
 /** Wait for the persisted entries, so a restore reads what the last run left behind. */

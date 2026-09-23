@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Pencil, SplitSquareHorizontal, Trash2, PanelBottom, FolderOpen, Play, FolderCog, Copy, Terminal, SlidersHorizontal } from 'lucide-react';
 import { ClaudeLogo } from '@/features/agent/BrandIcon';
 import { AGENT_KINDS, AGENT_LABEL, type AgentKind } from '@/features/agent/agents';
@@ -16,12 +16,20 @@ import { AgentLogo } from '@/features/agent/BrandIcon';
 import { revealInFileManager } from '@/native/system';
 import { PixelGrid } from '@/components/ui/LoadingState';
 import { useTerminalActivity } from './activity';
+import { terminalName, useClaudeLive } from './claude-live';
+import { useClaudeWorking } from './claude-watch';
+import { refreshChanges, useTerminalChanges } from './claude-changes';
 import { paneDragProps } from '@/features/sessions/pane-drag';
 import { MoveToSub } from '@/features/projects/MoveToMenu';
 import { t } from '@/i18n';
 import { copyText } from '@/lib/clipboard';
 
-/** Sidebar row for a terminal: shell glyph, title, live dot when a PTY is attached. */
+/**
+ * Sidebar row for a terminal: shell glyph, title, live dot when a PTY is
+ * attached. With Claude Code running in it the row grows a second line, the
+ * way a chat has one: the conversation's own title (the one Claude gives the
+ * terminal), the branch, whether it is working, and the lines it changed.
+ */
 export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab }) {
   const renameTab = useTerminals((s) => s.renameTab);
   const closeTab = useTerminals((s) => s.closeTab);
@@ -37,8 +45,21 @@ export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab
 
   const active = activePaneContent?.kind === 'terminal' && activePaneContent.terminalId === tab.id;
   const busy = useTerminalActivity((s) => !!s.busy[tab.id]);
-  const isClaude = !!tab.program;
-  const label = tab.title === tab.shellId ? (shells?.find((s) => s.id === tab.shellId)?.label ?? tab.title) : tab.title;
+  const live = useClaudeLive((s) => s.byTab[tab.id]);
+  const claudeTitle = useClaudeLive((s) => s.titles[tab.id]);
+  const working = useClaudeWorking((s) => !!s.byTab[tab.id]);
+  const adds = useTerminalChanges((s) => s.byTab[tab.id]?.session.reduce((n, f) => n + f.additions, 0) ?? 0);
+  const dels = useTerminalChanges((s) => s.byTab[tab.id]?.session.reduce((n, f) => n + f.deletions, 0) ?? 0);
+  const branch = useTerminalChanges((s) => s.byTab[tab.id]?.branch ?? null);
+  const known = useTerminalChanges((s) => !!s.byTab[tab.id]);
+  const isClaude = !!tab.program || !!live;
+  const claudeRow = tab.program?.agent === 'claude' || !!live;
+  const named = claudeRow ? terminalName(tab, claudeTitle) : tab.title;
+  const label = named === tab.shellId ? (shells?.find((s) => s.id === tab.shellId)?.label ?? named) : named;
+  // One look at the tree for a row whose terminal has not been shown yet in this run.
+  useEffect(() => {
+    if (live && tab.cwd && !known) void refreshChanges(tab.id, tab.cwd, live.since);
+  }, [live, tab.cwd, tab.id, known]);
 
   const commit = () => {
     setEditing(false);
@@ -65,12 +86,13 @@ export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab
             if (e.key === 'Delete') closeTab(tab.id);
           }}
           className={cn(
-            'group/row relative flex h-(--row-height) select-none items-center gap-2 rounded-lg pl-2.5 pr-2.5 text-ui outline-none transition-colors duration-(--motion-fast)',
+            'group/row relative flex select-none items-center gap-2 rounded-lg pl-2.5 pr-2.5 text-ui outline-none transition-colors duration-(--motion-fast)',
+            live ? 'min-h-(--row-height) py-1.5' : 'h-(--row-height)',
             active ? 'bg-surface-active text-primary' : 'text-secondary hover:bg-surface-hover hover:text-primary focus-visible:bg-surface-hover',
           )}
         >
-          <span className={cn('inline-flex w-5 shrink-0 items-center justify-center', busy ? 'text-primary' : tab.ptyId ? 'text-success' : 'text-muted')} title={busy ? t('Working') : tab.ptyId ? t('Running') : t('Not started')}>
-            <PixelGrid rows={2} active={busy} />
+          <span className={cn('inline-flex w-5 shrink-0 items-center justify-center', busy || working ? 'text-primary' : tab.ptyId ? 'text-success' : 'text-muted')} title={busy || working ? t('Working') : tab.ptyId ? t('Running') : t('Not started')}>
+            <PixelGrid rows={2} active={busy || working} />
           </span>
           {isClaude ? (
             <span className={cn('inline-flex shrink-0 items-center', active ? 'text-primary' : 'text-secondary')}>
@@ -97,6 +119,23 @@ export const TerminalRow = memo(function TerminalRow({ tab }: { tab: TerminalTab
                 }}
                 className="h-6 min-w-0 flex-1 rounded-[4px] bg-surface px-1 text-ui text-primary shadow-[inset_0_0_0_1px_var(--accent)] outline-none"
               />
+            ) : live ? (
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className={cn('min-w-0 flex-1 truncate', active && 'font-medium')}>{label}</span>
+                  {adds || dels ? (
+                    <span className="shrink-0 rounded-[5px] bg-surface-inset px-1 font-mono text-[10.5px] leading-[16px] tabular">
+                      {adds ? <span className="text-success">+{adds}</span> : null}
+                      {adds && dels ? ' ' : ''}
+                      {dels ? <span className="text-danger">−{dels}</span> : null}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="truncate text-[11.5px] text-muted">
+                  {branch ? `${branch} · ` : ''}
+                  {working ? t('Working') : t('Waiting for you')}
+                </span>
+              </span>
             ) : (
               <span className={cn('min-w-0 flex-1 truncate', active && 'font-medium')}>{label}</span>
             )}

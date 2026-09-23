@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { FilePlus2, FileMinus2, GitBranch, PanelRightClose, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { basename } from '@/lib/format';
@@ -11,7 +11,7 @@ import { LivingItem, LivingList, LivingSwitch } from '@/components/ui/Living';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { FileIcon } from '@/features/files/FileIcon';
 import { useTerminalChanges, refreshChanges } from './claude-changes';
-import { useClaudeLive } from './claude-live';
+import { useClaudeLive, PANEL_MIN, PANEL_MAX } from './claude-live';
 import { t } from '@/i18n';
 
 /**
@@ -26,9 +26,11 @@ export function ClaudeChanges({ tabId, cwd, since }: { tabId: string; cwd: strin
   const files = (mode === 'session' ? changes?.session : changes?.files) ?? [];
   const adds = files.reduce((n, f) => n + f.additions, 0);
   const dels = files.reduce((n, f) => n + f.deletions, 0);
+  const width = useClaudeLive((s) => s.panelWidth);
 
   return (
-    <aside className="flex h-full w-[300px] shrink-0 flex-col bg-surface hairline-l">
+    <aside style={{ width }} className="relative flex h-full shrink-0 flex-col bg-surface hairline-l">
+      <ResizeEdge width={width} />
       <div className="flex h-10 shrink-0 items-center gap-1 pl-2 pr-1.5 hairline-b">
         <SegmentedControl
           size="sm"
@@ -77,6 +79,42 @@ export function ClaudeChanges({ tabId, cwd, since }: { tabId: string; cwd: strin
         )}
       </LivingSwitch>
     </aside>
+  );
+}
+
+/** The panel's left edge: drag to widen or narrow it, double-click for the default width. */
+function ResizeEdge({ width }: { width: number }) {
+  const drag = useRef<{ x: number; w: number } | null>(null);
+  const [active, setActive] = useState(false);
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={t('Resize')}
+      aria-valuemin={PANEL_MIN}
+      aria-valuemax={PANEL_MAX}
+      aria-valuenow={width}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        drag.current = { x: e.clientX, w: width };
+        setActive(true);
+      }}
+      onPointerMove={(e) => {
+        if (!drag.current) return;
+        useClaudeLive.getState().setPanelWidth(drag.current.w + drag.current.x - e.clientX);
+      }}
+      onPointerUp={() => {
+        drag.current = null;
+        setActive(false);
+      }}
+      onPointerCancel={() => {
+        drag.current = null;
+        setActive(false);
+      }}
+      onDoubleClick={() => useClaudeLive.getState().setPanelWidth(300)}
+      className={cn('absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize after:absolute after:inset-y-0 after:left-[3px] after:w-[2px] after:rounded-full after:transition-colors', active ? 'after:bg-accent' : 'hover:after:bg-border-strong')}
+    />
   );
 }
 
