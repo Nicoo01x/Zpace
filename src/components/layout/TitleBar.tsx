@@ -3,6 +3,7 @@ import { PanelLeft, GitCompareArrows, FolderTree, Mic } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { isMac, isTauri } from '@/lib/platform';
 import { useUI } from '@/stores/ui';
+import { useStudio } from '@/stores/studio';
 import { useSessions } from '@/stores/sessions';
 import { useProjects } from '@/stores/projects';
 import { IconButton } from '@/components/ui/IconButton';
@@ -28,9 +29,11 @@ import { t } from '@/i18n';
  */
 export function TitleBar() {
   const welcomeOpen = useUI((s) => s.welcomeOpen);
+  const studioOpen = useStudio((s) => s.open);
   if (isMac) return null;
+  // Over a full-screen mode (the entrance, the Studio) the bar stays on top with no background of its own.
   return (
-    <header data-tauri-drag-region className={cn('titlebar relative flex h-(--titlebar-height) shrink-0 select-none items-center pl-2', welcomeOpen ? 'z-[925] bg-transparent' : 'z-20')}>
+    <header data-tauri-drag-region className={cn('titlebar relative flex h-(--titlebar-height) shrink-0 select-none items-center pl-2', welcomeOpen || studioOpen ? 'z-[925] bg-transparent' : 'z-20')}>
       <UsageBar />
       <Island />
       <SidebarControls />

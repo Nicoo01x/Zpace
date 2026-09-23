@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { springs } from '@/lib/motion';
 import { useSessions, selectEvents } from '@/stores/sessions';
@@ -40,7 +40,7 @@ function blockTime(b: Block): number {
   return 0;
 }
 
-export const SessionView = memo(function SessionView({ sessionId, focused }: { sessionId: string; focused: boolean }) {
+export const SessionView = memo(function SessionView({ sessionId, focused, empty }: { sessionId: string; focused: boolean; empty?: ReactNode }) {
   const events = useSessions(selectEvents(sessionId));
   const session = useSessions((s) => s.sessions[sessionId]);
   const project = useProjects((s) => s.projects.find((p) => p.id === session?.projectId));
@@ -91,7 +91,9 @@ export const SessionView = memo(function SessionView({ sessionId, focused }: { s
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      {blocks.length === 0 ? (
+      {blocks.length === 0 && empty ? (
+        empty
+      ) : blocks.length === 0 ? (
         <div className="flex flex-1 flex-col items-start justify-end gap-2 px-(--content-padding) pb-6 font-mono text-content">
           <div className="flex items-center gap-2 text-primary">
             <AgentGlyph className="size-[13px] text-secondary" />

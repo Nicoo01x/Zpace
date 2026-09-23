@@ -7,6 +7,7 @@ import { useSettings } from '@/stores/settings';
 import { useEnvironment } from '@/stores/environment';
 import { isTauri } from '@/lib/platform';
 import type { AgentEvent, Attachment, PermissionDecision } from '@/types/agent';
+import type { Project, Session } from '@/types/workspace';
 import { toast } from '@/features/notifications/toast-store';
 import { openReview } from '@/features/review/open-review';
 import { claudeFinishedToast, claudePermissionToast } from '@/features/notifications/rich';
@@ -111,10 +112,19 @@ async function notify(kind: 'permission' | 'completed' | 'error', sessionId: str
   }
 }
 
+/** A session that works in a folder of its own (`options.cwd`) runs as if that folder were its project. */
+function projectFor(session: Session): Project | undefined {
+  const known = useProjects.getState().projects.find((p) => p.id === session.projectId);
+  if (known) return known;
+  const cwd = session.options?.cwd;
+  if (!cwd) return undefined;
+  return { id: session.projectId, name: cwd.split(/[\\/]/).filter(Boolean).pop() ?? cwd, path: cwd, runtime: 'windows', lastOpenedAt: 0, createdAt: 0, expanded: false };
+}
+
 async function ensureStarted(sessionId: string) {
   if (started.has(sessionId)) return;
   const session = useSessions.getState().sessions[sessionId];
-  const project = session && useProjects.getState().projects.find((p) => p.id === session.projectId);
+  const project = session && projectFor(session);
   if (!session || !project) throw new Error('Session or project not found');
   const settings = useSettings.getState();
   await providerFor().startSession(

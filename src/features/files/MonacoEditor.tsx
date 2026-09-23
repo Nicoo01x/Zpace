@@ -41,6 +41,7 @@ export default function MonacoEditor({
   findPath,
   notedLines,
   revealNonce,
+  wrap,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -63,6 +64,8 @@ export default function MonacoEditor({
   notedLines?: Array<[number, number]>;
   /** Bumps to reveal `revealLine` again even when the number did not change. */
   revealNonce?: number;
+  /** Soft-wrap long lines (prose: a skill, a prompt, a memory file). */
+  wrap?: boolean;
 }) {
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const env = useEnvironment((s) => s.report);
@@ -329,7 +332,7 @@ export default function MonacoEditor({
         scrollBeyondLastLine: false,
         renderLineHighlight: 'line',
         scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10, useShadows: false },
-        wordWrap: 'off',
+        wordWrap: wrap ? 'on' : 'off',
         glyphMargin: false,
         folding: true,
         lineNumbersMinChars: 3,

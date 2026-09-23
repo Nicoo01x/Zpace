@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { ClaudeLogo, CodexLogo, GeminiLogo, OpenCodeLogo } from '@/features/agent/BrandIcon';
 import { useEnvironment } from '@/stores/environment';
+import { openStudio } from '@/features/studio/open';
 import {
   FolderOpen,
   Plus,
@@ -38,6 +39,7 @@ import {
   Workflow,
   Plug,
   Swords,
+  Wand2,
   Bot,
   Users,
   Puzzle,
@@ -180,6 +182,8 @@ export function buildCommands(a: WorkspaceActions): Command[] {
     { id: 'arena.new', title: t('Agent arena…'), group: 'Session', icon: Swords, keywords: ['arena', 'variants', 'parallel', 'compare', 'worktree', 'agents'], when: () => !!project()?.git?.isRepo, run: () => useArenaLauncher.getState().open(project()!.id) },
     { id: 'view.git-pane', title: t('Git as a pane'), group: 'Git', icon: GitBranch, keywords: ['undock', 'split'], when: () => !!project(), run: () => a.splitActive('horizontal', { kind: 'git', projectId: project()!.id }) },
     { id: 'view.welcome', title: t('Show the entrance screen'), group: 'View', icon: Search, keywords: ['welcome', 'dashboard', 'intro', 'inicio'], run: () => ui().setWelcomeOpen(true) },
+    { id: 'view.studio', title: t('Studio: build your Claude'), group: 'View', icon: Wand2, keywords: ['studio', 'skills', 'subagents', 'commands', 'hooks', 'mcp', 'claude.md', 'memory', 'estudio', 'sala'], run: () => openStudio() },
+    { id: 'view.studio-project', title: t('Studio: this project’s Claude'), group: 'View', icon: Wand2, keywords: ['studio', 'project', 'skills', '.claude', 'estudio'], when: () => !!project(), run: () => openStudio({ kind: 'project', projectId: project()!.id }) },
     { id: 'view.zoom', title: t('Maximize / restore the pane'), group: 'View', icon: Search, shortcut: 'mod+shift+enter', keywords: ['zoom', 'fullscreen', 'pantalla grande', 'maximize'], run: () => ui().toggleZoom() },
     { id: 'view.stack', title: t('Window stack'), group: 'View', icon: Search, shortcut: 'ctrl+tab', keywords: ['switch', 'panes', 'windows', 'cycle'], run: () => ui().setStackOpen(true) },
     { id: 'view.spotlight', title: t('Spotlight'), group: 'View', icon: Search, shortcut: 'mod+space', keywords: ['search', 'web', 'files', 'anything'], run: () => ui().setSpotlightOpen(true) },

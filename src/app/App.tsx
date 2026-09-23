@@ -13,6 +13,7 @@ import { Spotlight } from '@/features/spotlight/Spotlight';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { WindowStack } from '@/features/switcher/WindowStack';
 import { Welcome } from '@/features/welcome/Welcome';
+import { Studio } from '@/features/studio/Studio';
 import { DaySummaryDialog } from '@/features/summary/DaySummary';
 import { PromptDialog } from '@/components/ui/PromptDialog';
 import { Celebration } from '@/features/mascot/Celebration';
@@ -97,6 +98,9 @@ export function App() {
         <WindowStack key={`ws-${language}`} />
         <ErrorBoundary compact label={t('Welcome')}>
           <Welcome key={`wl-${language}`} />
+        </ErrorBoundary>
+        <ErrorBoundary compact label={t('Studio')}>
+          <Studio key={`st-${language}`} />
         </ErrorBoundary>
         <SettingsDialog key={`sd-${language}`} />
         <AboutDialog key={`ab-${language}`} />

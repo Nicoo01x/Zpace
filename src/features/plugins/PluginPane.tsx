@@ -3,6 +3,7 @@ import { Puzzle } from 'lucide-react';
 import { usePlugins } from '@/stores/plugins';
 import { useSettings } from '@/stores/settings';
 import { useUI } from '@/stores/ui';
+import { useStudio } from '@/stores/studio';
 import { useFloats, floatKey } from '@/stores/floats';
 import { usePaneDrag } from '@/features/sessions/pane-drag';
 import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
@@ -113,7 +114,8 @@ export function PluginPane({ pluginId, paneId, floating = false }: { pluginId: s
 
   // Any modal layer of the app (palette, dialogs, sheets, a pane being dragged) must hide the native webviews.
   const dragging = usePaneDrag((s) => !!s.content);
-  const overlayOpen = useUI((s) => s.paletteOpen || s.spotlightOpen || s.stackOpen || s.welcomeOpen || s.settingsOpen || s.searchOpen || s.aboutOpen || s.cloneOpen || !!s.newProject || s.gitPanelOpen || !!s.lightbox || !!s.diffViewer || !!s.claudeLaunch) || dragging;
+  const studioOpen = useStudio((s) => s.open);
+  const overlayOpen = useUI((s) => s.paletteOpen || s.spotlightOpen || s.stackOpen || s.welcomeOpen || s.settingsOpen || s.searchOpen || s.aboutOpen || s.cloneOpen || !!s.newProject || s.gitPanelOpen || !!s.lightbox || !!s.diffViewer || !!s.claudeLaunch) || studioOpen || dragging;
   useEffect(() => {
     webviews.setHostHidden(overlayOpen);
   }, [overlayOpen, webviews]);

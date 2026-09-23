@@ -5,6 +5,7 @@ import { toast } from '@/features/notifications/toast-store';
 import { useWorkspaceActions } from '@/features/sessions/useWorkspaceActions';
 import { cn } from '@/lib/cn';
 import { useUI } from '@/stores/ui';
+import { useStudio } from '@/stores/studio';
 import { useSettings } from '@/stores/settings';
 import { engineById } from './engines';
 import { EngineLogo } from './EngineLogo';
@@ -56,7 +57,8 @@ export function BrowserPane({ browserId, url: initialUrl, projectId, focused }: 
 
   // Any overlay (palette, dialogs, sheets, lightbox, menus are fine) must hide the native webview.
   const dragging = usePaneDrag((s) => !!s.content);
-  const overlayOpen = useUI((s) => s.paletteOpen || s.spotlightOpen || s.stackOpen || s.welcomeOpen || s.settingsOpen || s.searchOpen || s.aboutOpen || s.cloneOpen || !!s.newProject || s.gitPanelOpen || !!s.lightbox || !!s.diffViewer || !!s.claudeLaunch) || dragging;
+  const studioOpen = useStudio((s) => s.open);
+  const overlayOpen = useUI((s) => s.paletteOpen || s.spotlightOpen || s.stackOpen || s.welcomeOpen || s.settingsOpen || s.searchOpen || s.aboutOpen || s.cloneOpen || !!s.newProject || s.gitPanelOpen || !!s.lightbox || !!s.diffViewer || !!s.claudeLaunch) || studioOpen || dragging;
 
   useEffect(() => {
     if (!browserAvailable) return;

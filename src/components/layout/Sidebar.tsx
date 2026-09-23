@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, Reorder } from 'motion/react';
 import { useShallow } from 'zustand/react/shallow';
-import { ChevronRight, FolderPlus, GitBranch, Globe, LayoutDashboard, NotebookPen, Plus, Search, Settings, SlidersHorizontal, Sparkles, Terminal, Users, X } from 'lucide-react';
+import { ChevronRight, FolderPlus, GitBranch, Globe, LayoutDashboard, NotebookPen, Plus, Search, Settings, SlidersHorizontal, Sparkles, Terminal, Users, Wand2, X } from 'lucide-react';
 import { useAgents, agentList } from '@/stores/agents';
 import { AgentRow, SubagentRow } from '@/features/agents/rows';
 import { useAgentEditor, useRoomLauncher, useSubagentEditor } from '@/features/agents/editor';
+import { openStudio } from '@/features/studio/open';
 import { useCapabilities, NO_ASSETS, type AssetInfo } from '@/stores/capabilities';
 import { cn } from '@/lib/cn';
 import { isMac } from '@/lib/platform';
@@ -296,16 +297,23 @@ export function Sidebar() {
             <div className="flex shrink-0 items-center justify-between px-3 pb-3 pt-2">
               <CreateMenu onClaude={() => void openClaudeTerminal()} />
               {mascotInSidebar ? <Mascot size={40} className="mx-1" /> : null}
-              <Tooltip content={t('Settings')} shortcut="mod+comma" side="top">
-                <button
-                  type="button"
-                  aria-label={t('Settings')}
-                  onClick={() => openSettings()}
-                  className={cn('inline-flex size-9 items-center justify-center rounded-[10px] bg-surface-inset text-primary/80 press', 'hover:bg-surface-active')}
-                >
-                  <Settings className="size-[17px]" strokeWidth={1.75} />
-                </button>
-              </Tooltip>
+              <div className="flex items-center gap-1.5">
+                <Tooltip content={t('Studio: build your Claude')} side="top">
+                  <button type="button" aria-label={t('Studio')} onClick={() => openStudio()} className={cn('inline-flex size-9 items-center justify-center rounded-[10px] bg-surface-inset text-primary/80 press', 'hover:bg-surface-active')}>
+                    <Wand2 className="size-[17px]" strokeWidth={1.75} />
+                  </button>
+                </Tooltip>
+                <Tooltip content={t('Settings')} shortcut="mod+comma" side="top">
+                  <button
+                    type="button"
+                    aria-label={t('Settings')}
+                    onClick={() => openSettings()}
+                    className={cn('inline-flex size-9 items-center justify-center rounded-[10px] bg-surface-inset text-primary/80 press', 'hover:bg-surface-active')}
+                  >
+                    <Settings className="size-[17px]" strokeWidth={1.75} />
+                  </button>
+                </Tooltip>
+              </div>
             </div>
           </div>
 

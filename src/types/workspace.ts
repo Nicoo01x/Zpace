@@ -66,6 +66,8 @@ export interface SessionOptions {
   /** Tool patterns allowed without a prompt / never allowed (`--allowedTools` / `--disallowedTools`). */
   allowedTools?: string[];
   disallowedTools?: string[];
+  /** Work in this folder instead of a project's (the Studio's builder for `~/.claude` has no project). */
+  cwd?: string;
 }
 
 export interface Session {
