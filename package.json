@@ -2,7 +2,7 @@
   "name": "zpace-desktop",
   "productName": "Zpace",
   "private": true,
-  "version": "0.1.9",
+  "version": "0.1.10",
   "license": "MIT",
   "type": "module",
   "description": "A premium desktop workspace for Claude Code and other CLI agents.",
